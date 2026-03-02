@@ -1,0 +1,35 @@
+{{define "title"}}My Dashboard{{end}}
+
+{{define "content"}}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">My Dashboard</h1>
+  <p class="text-gray-500 text-sm mt-1">Track your event submissions</p>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-sm text-gray-500 font-medium">Pending</p>
+    <p class="text-3xl font-bold text-yellow-600 mt-1">{{.Data.Pending}}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-sm text-gray-500 font-medium">Approved</p>
+    <p class="text-3xl font-bold text-green-600 mt-1">{{.Data.Approved}}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-sm text-gray-500 font-medium">Rejected</p>
+    <p class="text-3xl font-bold text-red-600 mt-1">{{.Data.Rejected}}</p>
+  </div>
+</div>
+
+<div class="flex gap-3">
+  <a href="/events/new"
+     class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    Submit New Event
+  </a>
+  <a href="/events"
+     class="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+    View All My Events
+  </a>
+</div>
+{{end}}

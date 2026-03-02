@@ -1,0 +1,41 @@
+{{define "title"}}All Events{{end}}
+
+{{define "content"}}
+<div class="mb-6 flex items-center justify-between flex-wrap gap-3">
+  <h1 class="text-2xl font-bold text-gray-900">All Events</h1>
+  <div class="flex gap-2 text-sm">
+    <a href="/admin/events" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter ""}}bg-indigo-600 text-white border-indigo-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">All</a>
+    <a href="/admin/events?status=pending" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "pending"}}bg-yellow-500 text-white border-yellow-500{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Pending</a>
+    <a href="/admin/events?status=approved" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "approved"}}bg-green-600 text-white border-green-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Approved</a>
+    <a href="/admin/events?status=rejected" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "rejected"}}bg-red-600 text-white border-red-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Rejected</a>
+  </div>
+</div>
+
+{{$events := .Data.Events}}
+{{if $events}}
+<div class="space-y-3">
+  {{range $events}}
+  <a href="/admin/events/{{.ID}}" class="block bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:border-indigo-300 hover:shadow transition-all">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="font-semibold text-gray-900">{{.Name}}</p>
+        <p class="text-xs text-gray-400 mt-0.5">
+          Submitted by <span class="font-medium text-gray-600">{{.UserName}}</span>
+          {{if or .Quarter .Year}} · {{.QuarterYear}}{{end}}
+        </p>
+        <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{.Description}}</p>
+      </div>
+      <span class="flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize {{.StatusBadgeClass}}">
+        {{.Status}}
+      </span>
+    </div>
+    <p class="text-xs text-gray-400 mt-2">{{.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</p>
+  </a>
+  {{end}}
+</div>
+{{else}}
+<div class="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+  <p class="text-gray-500 text-sm">No events found.</p>
+</div>
+{{end}}
+{{end}}

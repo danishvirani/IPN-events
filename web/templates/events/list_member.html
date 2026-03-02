@@ -1,0 +1,42 @@
+{{define "title"}}My Events{{end}}
+
+{{define "content"}}
+<div class="mb-6 flex items-center justify-between">
+  <h1 class="text-2xl font-bold text-gray-900">My Events</h1>
+  <a href="/events/new"
+     class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    New Event
+  </a>
+</div>
+
+{{if .Data}}
+<div class="space-y-3">
+  {{range .Data}}
+  <a href="/events/{{.ID}}" class="block bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:border-indigo-300 hover:shadow transition-all">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="font-semibold text-gray-900">{{.Name}}</p>
+        {{if or .Quarter .Year}}
+        <p class="text-xs text-gray-400 mt-0.5">{{.QuarterYear}}</p>
+        {{end}}
+        <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{.Description}}</p>
+      </div>
+      <span class="flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize {{.StatusBadgeClass}}">
+        {{.Status}}
+      </span>
+    </div>
+    <p class="text-xs text-gray-400 mt-2">Submitted {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+  </a>
+  {{end}}
+</div>
+{{else}}
+<div class="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+  <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+  </svg>
+  <p class="text-gray-500 text-sm">No events yet.</p>
+  <a href="/events/new" class="mt-3 inline-block text-sm text-indigo-600 hover:underline">Submit your first event →</a>
+</div>
+{{end}}
+{{end}}

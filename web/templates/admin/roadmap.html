@@ -1,0 +1,169 @@
+{{define "title"}}Event Roadmap{{end}}
+
+{{define "content"}}
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Event Roadmap</h1>
+    <p class="text-sm text-gray-500 mt-1">Strategic view of approved events by quarter</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="/events/new" class="inline-flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      New Event
+    </a>
+  </div>
+</div>
+
+{{if not .Data}}
+<div class="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+  <p class="text-gray-500 text-sm">No approved events yet.</p>
+  <a href="/events/new" class="mt-3 inline-block text-sm text-blue-700 hover:underline">Create your first event →</a>
+</div>
+{{else}}
+
+<div class="space-y-10">
+{{range .Data}}
+<div>
+  {{/* Year banner */}}
+  <div class="flex items-center gap-4 mb-4">
+    <div class="flex-shrink-0">
+      {{if .Year}}
+      <span class="inline-block bg-[#0a1628] text-white text-sm font-bold px-4 py-1.5 rounded-full">{{.Year}}</span>
+      {{else}}
+      <span class="inline-block bg-gray-400 text-white text-sm font-bold px-4 py-1.5 rounded-full">Unscheduled</span>
+      {{end}}
+    </div>
+    <div class="flex-1 border-t-2 border-dashed border-gray-200"></div>
+  </div>
+
+  {{/* Quarters as timeline segments */}}
+  <div class="relative pl-6 space-y-6">
+    {{/* Vertical line */}}
+    <div class="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+    {{if .Q1}}
+    <div class="relative">
+      <div class="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow"></div>
+      <div class="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
+        <div class="bg-blue-50 px-4 py-2 border-b border-blue-100 flex items-center gap-2">
+          <span class="text-sm font-bold text-blue-800">Q1</span>
+          <span class="text-xs text-blue-500">January – March</span>
+          <span class="ml-auto text-xs text-blue-400">{{len .Q1}} event{{if gt (len .Q1) 1}}s{{end}}</span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          {{range .Q1}}
+          <a href="/admin/events/{{.ID}}" class="flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+            <div>
+              <p class="text-sm font-semibold text-gray-800">{{.Name}}</p>
+              {{if .Description}}<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{.Description}}</p>{{end}}
+            </div>
+            {{if .UserName}}<span class="text-xs text-gray-400 flex-shrink-0 ml-4 mt-0.5">{{.UserName}}</span>{{end}}
+          </a>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+
+    {{if .Q2}}
+    <div class="relative">
+      <div class="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow"></div>
+      <div class="bg-white rounded-xl border border-green-200 shadow-sm overflow-hidden">
+        <div class="bg-green-50 px-4 py-2 border-b border-green-100 flex items-center gap-2">
+          <span class="text-sm font-bold text-green-800">Q2</span>
+          <span class="text-xs text-green-500">April – June</span>
+          <span class="ml-auto text-xs text-green-400">{{len .Q2}} event{{if gt (len .Q2) 1}}s{{end}}</span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          {{range .Q2}}
+          <a href="/admin/events/{{.ID}}" class="flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+            <div>
+              <p class="text-sm font-semibold text-gray-800">{{.Name}}</p>
+              {{if .Description}}<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{.Description}}</p>{{end}}
+            </div>
+            {{if .UserName}}<span class="text-xs text-gray-400 flex-shrink-0 ml-4 mt-0.5">{{.UserName}}</span>{{end}}
+          </a>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+
+    {{if .Q3}}
+    <div class="relative">
+      <div class="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-yellow-500 border-2 border-white shadow"></div>
+      <div class="bg-white rounded-xl border border-yellow-200 shadow-sm overflow-hidden">
+        <div class="bg-yellow-50 px-4 py-2 border-b border-yellow-100 flex items-center gap-2">
+          <span class="text-sm font-bold text-yellow-800">Q3</span>
+          <span class="text-xs text-yellow-500">July – September</span>
+          <span class="ml-auto text-xs text-yellow-400">{{len .Q3}} event{{if gt (len .Q3) 1}}s{{end}}</span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          {{range .Q3}}
+          <a href="/admin/events/{{.ID}}" class="flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+            <div>
+              <p class="text-sm font-semibold text-gray-800">{{.Name}}</p>
+              {{if .Description}}<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{.Description}}</p>{{end}}
+            </div>
+            {{if .UserName}}<span class="text-xs text-gray-400 flex-shrink-0 ml-4 mt-0.5">{{.UserName}}</span>{{end}}
+          </a>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+
+    {{if .Q4}}
+    <div class="relative">
+      <div class="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-purple-500 border-2 border-white shadow"></div>
+      <div class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden">
+        <div class="bg-purple-50 px-4 py-2 border-b border-purple-100 flex items-center gap-2">
+          <span class="text-sm font-bold text-purple-800">Q4</span>
+          <span class="text-xs text-purple-500">October – December</span>
+          <span class="ml-auto text-xs text-purple-400">{{len .Q4}} event{{if gt (len .Q4) 1}}s{{end}}</span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          {{range .Q4}}
+          <a href="/admin/events/{{.ID}}" class="flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+            <div>
+              <p class="text-sm font-semibold text-gray-800">{{.Name}}</p>
+              {{if .Description}}<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{.Description}}</p>{{end}}
+            </div>
+            {{if .UserName}}<span class="text-xs text-gray-400 flex-shrink-0 ml-4 mt-0.5">{{.UserName}}</span>{{end}}
+          </a>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+
+    {{if .Unscheduled}}
+    <div class="relative">
+      <div class="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-gray-400 border-2 border-white shadow"></div>
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
+          <span class="text-sm font-bold text-gray-600">No Quarter</span>
+          <span class="ml-auto text-xs text-gray-400">{{len .Unscheduled}} event{{if gt (len .Unscheduled) 1}}s{{end}}</span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          {{range .Unscheduled}}
+          <a href="/admin/events/{{.ID}}" class="flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+            <div>
+              <p class="text-sm font-semibold text-gray-800">{{.Name}}</p>
+              {{if .Description}}<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{.Description}}</p>{{end}}
+            </div>
+            {{if .UserName}}<span class="text-xs text-gray-400 flex-shrink-0 ml-4 mt-0.5">{{.UserName}}</span>{{end}}
+          </a>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+
+  </div>
+</div>
+{{end}}
+</div>
+
+{{end}}
+{{end}}

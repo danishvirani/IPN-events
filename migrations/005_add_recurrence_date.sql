@@ -1,0 +1,2 @@
+ALTER TABLE events ADD COLUMN recurrence TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE events ADD COLUMN event_date TEXT;

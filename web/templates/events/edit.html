@@ -1,0 +1,317 @@
+{{define "title"}}Edit Event{{end}}
+
+{{define "content"}}
+{{$e := .Data}}
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Edit Event</h1>
+    <p class="text-gray-500 text-sm mt-1">Editing will reset status to Pending for re-review.</p>
+  </div>
+  <a href="/events/{{$e.ID}}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
+</div>
+
+<form method="POST" action="/events/{{$e.ID}}" x-data="eventForm('{{$e.Scope}}', '{{$e.VenueType}}', {{json $e.SupportRequests | printf `%s`}})" class="space-y-8">
+
+  {{/* ── Section 1: Basic Info ─────────────────────────────── */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">1</span>
+      Basic Information
+    </h2>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="name">Event Name <span class="text-red-500">*</span></label>
+      <input id="name" name="name" type="text" required value="{{$e.Name}}"
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Quarter</label>
+        <select name="quarter" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">— Select —</option>
+          <option value="Q1" {{if eq $e.Quarter "Q1"}}selected{{end}}>Q1 (Jan–Mar)</option>
+          <option value="Q2" {{if eq $e.Quarter "Q2"}}selected{{end}}>Q2 (Apr–Jun)</option>
+          <option value="Q3" {{if eq $e.Quarter "Q3"}}selected{{end}}>Q3 (Jul–Sep)</option>
+          <option value="Q4" {{if eq $e.Quarter "Q4"}}selected{{end}}>Q4 (Oct–Dec)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Year <span class="text-red-500">*</span></label>
+        <input name="year" type="number" min="2024" max="2030" required {{if $e.Year}}value="{{$e.Year}}"{{end}}
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
+      <input name="city" type="text" placeholder="e.g. Atlanta" {{if $e.City}}value="{{$e.City}}"{{end}}
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+        <select name="scope" x-model="scope"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="regional" {{if eq $e.Scope "regional"}}selected{{end}}>Regional</option>
+          <option value="local" {{if eq $e.Scope "local"}}selected{{end}}>Local</option>
+        </select>
+      </div>
+      <div x-show="scope === 'local'" x-cloak>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Jamatkhana</label>
+        <select name="scope_jamatkhana"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">— Select Jamatkhana —</option>
+          <option {{if eq $e.ScopeJamatkhana "Atlanta Northeast"}}selected{{end}}>Atlanta Northeast</option>
+          <option {{if eq $e.ScopeJamatkhana "Atlanta Northwest"}}selected{{end}}>Atlanta Northwest</option>
+          <option {{if eq $e.ScopeJamatkhana "Atlanta Headquarters"}}selected{{end}}>Atlanta Headquarters</option>
+          <option {{if eq $e.ScopeJamatkhana "Atlanta South"}}selected{{end}}>Atlanta South</option>
+          <option {{if eq $e.ScopeJamatkhana "Duluth"}}selected{{end}}>Duluth</option>
+          <option {{if eq $e.ScopeJamatkhana "Birmingham"}}selected{{end}}>Birmingham</option>
+          <option {{if eq $e.ScopeJamatkhana "Chattanooga"}}selected{{end}}>Chattanooga</option>
+          <option {{if eq $e.ScopeJamatkhana "Memphis"}}selected{{end}}>Memphis</option>
+          <option {{if eq $e.ScopeJamatkhana "Spartanburg"}}selected{{end}}>Spartanburg</option>
+          <option {{if eq $e.ScopeJamatkhana "Nashville"}}selected{{end}}>Nashville</option>
+          <option {{if eq $e.ScopeJamatkhana "Knoxville"}}selected{{end}}>Knoxville</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Venue Type</label>
+        <select name="venue_type" x-model="venueType"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="external" {{if eq $e.VenueType "external"}}selected{{end}}>External Venue</option>
+          <option value="internal" {{if eq $e.VenueType "internal"}}selected{{end}}>Jamatkhana (Internal)</option>
+        </select>
+      </div>
+      <div x-show="venueType === 'internal'" x-cloak>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Which Jamatkhana?</label>
+        <select name="venue_jamatkhana"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">— Select Jamatkhana —</option>
+          <option {{if eq $e.VenueJamatkhana "Atlanta Northeast"}}selected{{end}}>Atlanta Northeast</option>
+          <option {{if eq $e.VenueJamatkhana "Atlanta Northwest"}}selected{{end}}>Atlanta Northwest</option>
+          <option {{if eq $e.VenueJamatkhana "Atlanta Headquarters"}}selected{{end}}>Atlanta Headquarters</option>
+          <option {{if eq $e.VenueJamatkhana "Atlanta South"}}selected{{end}}>Atlanta South</option>
+          <option {{if eq $e.VenueJamatkhana "Duluth"}}selected{{end}}>Duluth</option>
+          <option {{if eq $e.VenueJamatkhana "Birmingham"}}selected{{end}}>Birmingham</option>
+          <option {{if eq $e.VenueJamatkhana "Chattanooga"}}selected{{end}}>Chattanooga</option>
+          <option {{if eq $e.VenueJamatkhana "Memphis"}}selected{{end}}>Memphis</option>
+          <option {{if eq $e.VenueJamatkhana "Spartanburg"}}selected{{end}}>Spartanburg</option>
+          <option {{if eq $e.VenueJamatkhana "Nashville"}}selected{{end}}>Nashville</option>
+          <option {{if eq $e.VenueJamatkhana "Knoxville"}}selected{{end}}>Knoxville</option>
+        </select>
+      </div>
+      <div x-show="venueType === 'external'" x-cloak>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
+        <input name="venue_address" type="text" placeholder="e.g. 123 Main St, Atlanta, GA 30301"
+               {{if $e.VenueAddress}}value="{{$e.VenueAddress}}"{{end}}
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Description <span class="text-red-500">*</span></label>
+      <textarea name="description" rows="4" required
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Description}}</textarea>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Recurrence <span class="text-gray-400">(optional)</span></label>
+      <select name="recurrence"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+        <option value="none"       {{if eq $e.Recurrence "none"}}selected{{end}}>None (one-time event)</option>
+        <option value="weekly"     {{if eq $e.Recurrence "weekly"}}selected{{end}}>Weekly</option>
+        <option value="bi-weekly"  {{if eq $e.Recurrence "bi-weekly"}}selected{{end}}>Bi-Weekly</option>
+        <option value="monthly"    {{if eq $e.Recurrence "monthly"}}selected{{end}}>Monthly</option>
+        <option value="quarterly"  {{if eq $e.Recurrence "quarterly"}}selected{{end}}>Quarterly</option>
+        <option value="annual"     {{if eq $e.Recurrence "annual"}}selected{{end}}>Annual</option>
+      </select>
+    </div>
+  </section>
+
+  {{/* ── Section 2: Input ─────────────────────────────────── */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">2</span>
+      Logic Model — Input
+    </h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Financial Resources</label>
+        <textarea name="input_financial" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Input.FinancialResources}}</textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Facilities</label>
+        <textarea name="input_facilities" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Input.Facilities}}</textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Human Support</label>
+        <textarea name="input_human_support" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Input.HumanSupport}}</textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Technology</label>
+        <textarea name="input_technology" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Input.Technology}}</textarea></div>
+      <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">Partnerships</label>
+        <textarea name="input_partnerships" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Input.Partnerships}}</textarea></div>
+    </div>
+  </section>
+
+  {{/* ── Section 3: Activities ────────────────────────────── */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">3</span>
+      Logic Model — Activities
+    </h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Structured Programming</label>
+        <textarea name="activities_structured" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Activities.StructuredProgramming}}</textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Engagement Design</label>
+        <textarea name="activities_engagement" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Activities.EngagementDesign}}</textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Content Delivery</label>
+        <textarea name="activities_content" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Activities.ContentDelivery}}</textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Community Building</label>
+        <textarea name="activities_community" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Activities.CommunityBuilding}}</textarea></div>
+    </div>
+  </section>
+
+  {{/* ── Section 4: Output ───────────────────────────────── */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4"
+           x-data="outputItems({{json $e.OutputItems}})">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">4</span>
+      Logic Model — Output
+    </h2>
+    <p class="text-xs text-gray-400">Examples: "20 women attended", "3 live AI demos completed", "Individual action plans created"</p>
+
+    <template x-for="(item, index) in items" :key="index">
+      <div class="flex items-center gap-3">
+        <span class="text-gray-300 flex-shrink-0">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+        </span>
+        <input name="output_description" x-model="item.description" type="text"
+               class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button type="button" @click="remove(index)"
+                class="text-red-400 hover:text-red-600 p-1 rounded flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </template>
+
+    <button type="button" @click="add()"
+            class="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Add Output
+    </button>
+  </section>
+
+  {{/* ── Section 5: Outcome & Impact ─────────────────────── */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">5</span>
+      Outcome &amp; Impact
+    </h2>
+    <div><label class="block text-sm font-medium text-gray-700 mb-1">Outcome</label>
+      <textarea name="outcome" rows="4" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Outcome}}</textarea></div>
+    <div><label class="block text-sm font-medium text-gray-700 mb-1">Impact</label>
+      <textarea name="impact" rows="4" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{$e.Impact}}</textarea></div>
+  </section>
+
+  {{/* ── Section 6: Support Requests ─────────────────────── */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">6</span>
+      Support Requests
+    </h2>
+
+    <template x-for="(item, index) in items" :key="index">
+      <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
+        <input type="hidden" :name="'support_venue_type'" :value="item.venueType">
+        <input type="hidden" :name="'support_venue_detail'" :value="item.venueDetail">
+
+        <div class="flex items-start gap-3">
+          <select x-model="item.type"
+                  class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="space">Space</option>
+            <option value="announcement">Announcement</option>
+            <option value="materials">Materials</option>
+          </select>
+          <input :name="'support_type'" type="hidden" :value="item.type">
+          <input :name="'support_description'" x-model="item.description" type="text"
+                 class="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <button type="button" @click="remove(index)" class="text-red-400 hover:text-red-600 p-1 rounded flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div x-show="item.type === 'space'" class="ml-1 space-y-2 pt-1 border-t border-gray-200">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Venue Type</label>
+            <select x-model="item.venueType"
+                    class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="external">External Venue</option>
+              <option value="internal">Jamatkhana (Internal)</option>
+            </select>
+          </div>
+          <div x-show="item.venueType === 'internal'">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Which Jamatkhana?</label>
+            <select x-model="item.venueDetail"
+                    class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">— Select Jamatkhana —</option>
+              <option>Atlanta Northeast</option>
+              <option>Atlanta Northwest</option>
+              <option>Atlanta Headquarters</option>
+              <option>Atlanta South</option>
+              <option>Duluth</option>
+              <option>Birmingham</option>
+              <option>Chattanooga</option>
+              <option>Memphis</option>
+              <option>Spartanburg</option>
+              <option>Nashville</option>
+              <option>Knoxville</option>
+            </select>
+          </div>
+          <div x-show="item.venueType === 'external'">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Venue Address</label>
+            <input x-model="item.venueDetail" type="text" placeholder="e.g. 123 Main St, Atlanta, GA 30301"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <button type="button" @click="addItem()"
+            class="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Add Request
+    </button>
+  </section>
+
+  <div class="flex justify-end gap-3 pb-4">
+    <a href="/events/{{$e.ID}}" class="px-5 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</a>
+    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save &amp; Resubmit</button>
+  </div>
+</form>
+
+<script>
+function outputItems(existing) {
+  return {
+    items: (existing || []).map(function(i) { return { description: i.description || '' }; }),
+    add() { this.items.push({ description: '' }); },
+    remove(i) { this.items.splice(i, 1); }
+  }
+}
+function eventForm(initScope, initVenueType, initItems) {
+  return {
+    scope: initScope || 'regional',
+    venueType: initVenueType || 'external',
+    items: (initItems || []).map(function(i) {
+      return {
+        type: i.type || 'space',
+        description: i.description || '',
+        venueType: i.venueType || 'external',
+        venueDetail: i.venueDetail || ''
+      };
+    }),
+    addItem() {
+      this.items.push({ type: 'space', description: '', venueType: 'external', venueDetail: '' });
+    },
+    remove(i) { this.items.splice(i, 1); }
+  }
+}
+</script>
+{{end}}

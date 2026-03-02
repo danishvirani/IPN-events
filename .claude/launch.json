@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "IPN Events Server",
+      "runtimeExecutable": "go",
+      "runtimeArgs": ["run", "./cmd/server"],
+      "env": {
+        "CGO_ENABLED": "1"
+      },
+      "port": 8080
+    }
+  ]
+}
