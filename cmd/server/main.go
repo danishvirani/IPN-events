@@ -81,13 +81,15 @@ func main() {
 
 	// Public
 	r.Get("/login",         authHandler.ShowLogin)
+	r.Post("/login",        authHandler.DoLogin)
 	r.Post("/logout",       authHandler.DoLogout)
 	r.Get("/auth/google",   authHandler.Initiate)
 	r.Get("/auth/callback", authHandler.Callback)
 
 	// Invite flow (public)
-	r.Get("/invite/{token}",        authHandler.ShowInvite)
-	r.Get("/invite/{token}/google", authHandler.InviteInitiate)
+	r.Get("/invite/{token}",          authHandler.ShowInvite)
+	r.Get("/invite/{token}/google",   authHandler.InviteInitiate)
+	r.Post("/invite/{token}/password", authHandler.InviteSetPassword)
 
 	// Protected
 	r.Group(func(r chi.Router) {

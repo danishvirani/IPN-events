@@ -59,8 +59,9 @@ type Event struct {
 	Name        string
 	Quarter     string
 	Year        int
-	Recurrence  string
-	EventDate   string
+	Recurrence        string
+	RecurrenceEndDate string // YYYY-MM-DD; empty = no end date (runs through year)
+	EventDate         string
 	Description string
 
 	City            string

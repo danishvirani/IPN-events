@@ -125,12 +125,12 @@ func (r *UserRepository) CreateWithPassword(name, email, password, role string) 
 	return u, nil
 }
 
-// LinkGoogle stores the Google ID and avatar URL on an existing user.
+// LinkGoogle stores the name, Google ID, and avatar URL on an existing user.
 // Called when an existing user (e.g. password-seeded admin) first signs in with Google.
-func (r *UserRepository) LinkGoogle(userID, googleID, avatarURL string) error {
+func (r *UserRepository) LinkGoogle(userID, name, googleID, avatarURL string) error {
 	_, err := r.db.Exec(
-		`UPDATE users SET google_id = ?, avatar_url = ?, updated_at = datetime('now') WHERE id = ?`,
-		googleID, avatarURL, userID,
+		`UPDATE users SET name = ?, google_id = ?, avatar_url = ?, updated_at = datetime('now') WHERE id = ?`,
+		name, googleID, avatarURL, userID,
 	)
 	return err
 }

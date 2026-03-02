@@ -14,6 +14,14 @@ import (
 	"ipn-events/internal/models"
 )
 
+// isGoogleEmail returns true for @gmail.com and Google Workspace domains
+// that are known to use Google SSO. For unknown domains we default to password.
+func isGoogleEmail(email string) bool {
+	lower := strings.ToLower(email)
+	return strings.HasSuffix(lower, "@gmail.com") ||
+		strings.HasSuffix(lower, "@googlemail.com")
+}
+
 const (
 	oauthStateCookie  = "oauth_state"
 	inviteTokenCookie = "invite_token"
@@ -100,10 +108,89 @@ func (h *AuthHandler) ShowInvite(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	defaultTab := "password"
+	if isGoogleEmail(inv.Email) {
+		defaultTab = "google"
+	}
 	render(w, r, "web/templates/invite/accept.html", map[string]interface{}{
-		"Invite": inv,
-		"Token":  token,
+		"Invite":     inv,
+		"Token":      token,
+		"DefaultTab": defaultTab,
 	})
+}
+
+// InviteSetPassword handles password-based account creation from an invite link.
+func (h *AuthHandler) InviteSetPassword(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+
+	inv, err := h.inviteRepo.GetByID(token)
+	if err != nil || !inv.IsValid() {
+		render(w, r, "web/templates/invite/accept.html", map[string]interface{}{
+			"Error": "This invite link is invalid or has already been used.",
+		})
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(r.FormValue("name"))
+	password := r.FormValue("password")
+	confirm := r.FormValue("confirm")
+
+	defaultTab := "password"
+	renderError := func(msg string) {
+		render(w, r, "web/templates/invite/accept.html", map[string]interface{}{
+			"Invite":        inv,
+			"Token":         token,
+			"DefaultTab":    defaultTab,
+			"Name":          name,
+			"PasswordError": msg,
+		})
+	}
+
+	if name == "" {
+		renderError("Please enter your name.")
+		return
+	}
+	if len(password) < 8 {
+		renderError("Password must be at least 8 characters.")
+		return
+	}
+	if password != confirm {
+		renderError("Passwords do not match.")
+		return
+	}
+
+	// Create the user with password
+	user, err := h.userRepo.CreateWithPassword(name, inv.Email, password, models.RoleTeamMember)
+	if err != nil {
+		// User might already exist — try to find and update password
+		user, err = h.userRepo.FindByEmail(inv.Email)
+		if err != nil {
+			renderError("Failed to create account. Please contact an admin.")
+			return
+		}
+	}
+	_ = h.inviteRepo.MarkUsed(inv.ID)
+
+	sessionToken, err := h.sessionSvc.Create(user.ID)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.SessionCookieName,
+		Value:    sessionToken,
+		Path:     "/",
+		MaxAge:   int(72 * 3600),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // Callback handles the OAuth callback from Google.
@@ -162,12 +249,17 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 			if strings.EqualFold(gu.Email, h.adminEmail) && h.adminEmail != "" {
 				user, err = h.userRepo.Create(uuid.New().String(), gu.Name, gu.Email, gu.Sub, gu.Picture, models.RoleAdmin)
 				if err != nil {
-					// Admin might already exist with same email
+					// Admin already exists (seeded with password) â link Google profile
 					user, err = h.userRepo.FindByEmail(gu.Email)
 					if err != nil {
 						http.Error(w, "Failed to create admin user", http.StatusInternalServerError)
 						return
 					}
+					// Update name + Google profile data from OAuth
+					_ = h.userRepo.LinkGoogle(user.ID, gu.Name, gu.Sub, gu.Picture)
+					user.Name = gu.Name
+					user.GoogleID = gu.Sub
+					user.AvatarURL = gu.Picture
 				}
 			} else {
 				http.Redirect(w, r, "/login?error=not_invited", http.StatusSeeOther)
@@ -177,6 +269,39 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create session
+	token, err := h.sessionSvc.Create(user.ID)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.SessionCookieName,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(72 * 3600),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// DoLogin handles password-based login for DB users.
+func (h *AuthHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	email := strings.TrimSpace(strings.ToLower(r.FormValue("email")))
+	password := r.FormValue("password")
+
+	user, err := h.userRepo.FindByEmail(email)
+	if err != nil || user.PasswordHash == "" || !auth.CheckPassword(user.PasswordHash, password) {
+		http.Redirect(w, r, "/login?error=invalid", http.StatusSeeOther)
+		return
+	}
+
 	token, err := h.sessionSvc.Create(user.ID)
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

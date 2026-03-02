@@ -32,13 +32,13 @@ func (r *EventRepository) Create(e *models.Event) error {
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(`
-		INSERT INTO events (id, user_id, name, quarter, year, description, recurrence,
+		INSERT INTO events (id, user_id, name, quarter, year, description, recurrence, recurrence_end_date,
 		                    city, scope, scope_jamatkhana, venue_type, venue_jamatkhana, venue_address,
 		                    outcome, impact, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.ID, e.UserID,
 		nullIfEmpty(e.Name), nullIfEmpty(e.Quarter), nullIfZero(e.Year),
-		e.Description, e.Recurrence,
+		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 		e.Outcome, e.Impact, e.Status,
@@ -101,13 +101,13 @@ func (r *EventRepository) Update(e *models.Event) error {
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(`
-		UPDATE events SET name=?, quarter=?, year=?, description=?, recurrence=?,
+		UPDATE events SET name=?, quarter=?, year=?, description=?, recurrence=?, recurrence_end_date=?,
 		                  city=?, scope=?, scope_jamatkhana=?, venue_type=?, venue_jamatkhana=?, venue_address=?,
 		                  outcome=?, impact=?,
 		                  status=?, admin_comment=NULL, updated_at=datetime('now')
 		WHERE id=?`,
 		e.Name, nullIfEmpty(e.Quarter), nullIfZero(e.Year),
-		e.Description, e.Recurrence,
+		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 		e.Outcome, e.Impact, models.StatusPending, e.ID,
@@ -168,13 +168,13 @@ func (r *EventRepository) Update(e *models.Event) error {
 // GetByID fetches a full event with all sub-records.
 func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	e := &models.Event{}
-	var quarter, outcome, impact, adminComment, recurrence, eventDate sql.NullString
+	var quarter, outcome, impact, adminComment, recurrence, recurrenceEndDate, eventDate sql.NullString
 	var city, scopeJK, venueJK, venueAddr sql.NullString
 	var year sql.NullInt64
 
 	err := r.db.QueryRow(`
 		SELECT e.id, e.user_id, u.name, u.email,
-		       e.name, e.quarter, e.year, e.description, e.recurrence, e.event_date,
+		       e.name, e.quarter, e.year, e.description, e.recurrence, e.recurrence_end_date, e.event_date,
 		       e.city, e.scope, e.scope_jamatkhana, e.venue_type, e.venue_jamatkhana, e.venue_address,
 		       e.outcome, e.impact, e.status, e.admin_comment, e.created_at, e.updated_at
 		FROM events e
@@ -182,7 +182,7 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 		WHERE e.id = ?`, id,
 	).Scan(
 		&e.ID, &e.UserID, &e.UserName, &e.UserEmail,
-		&e.Name, &quarter, &year, &e.Description, &recurrence, &eventDate,
+		&e.Name, &quarter, &year, &e.Description, &recurrence, &recurrenceEndDate, &eventDate,
 		&city, &e.Scope, &scopeJK, &e.VenueType, &venueJK, &venueAddr,
 		&outcome, &impact, &e.Status, &adminComment, &e.CreatedAt, &e.UpdatedAt,
 	)
@@ -195,6 +195,7 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	if e.Recurrence == "" {
 		e.Recurrence = models.RecurrenceNone
 	}
+	e.RecurrenceEndDate = recurrenceEndDate.String
 	e.EventDate = eventDate.String
 	e.City = city.String
 	e.ScopeJamatkhana = scopeJK.String
@@ -278,7 +279,7 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 	query := `
 		SELECT e.id, e.user_id, u.name, u.email,
 		       e.name, e.quarter, e.year, e.description,
-		       e.recurrence, e.event_date, e.city, e.scope,
+		       e.recurrence, e.recurrence_end_date, e.event_date, e.city, e.scope,
 		       e.status, e.admin_comment, e.created_at, e.updated_at
 		FROM events e
 		JOIN users u ON e.user_id = u.id ` + whereClause
@@ -292,12 +293,12 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 	var events []*models.Event
 	for rows.Next() {
 		e := &models.Event{}
-		var quarter, adminComment, recurrence, eventDate, city, scope sql.NullString
+		var quarter, adminComment, recurrence, recurrenceEndDate, eventDate, city, scope sql.NullString
 		var year sql.NullInt64
 		if err := rows.Scan(
 			&e.ID, &e.UserID, &e.UserName, &e.UserEmail,
 			&e.Name, &quarter, &year, &e.Description,
-			&recurrence, &eventDate, &city, &scope,
+			&recurrence, &recurrenceEndDate, &eventDate, &city, &scope,
 			&e.Status, &adminComment, &e.CreatedAt, &e.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -308,6 +309,7 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 		if e.Recurrence == "" {
 			e.Recurrence = models.RecurrenceNone
 		}
+		e.RecurrenceEndDate = recurrenceEndDate.String
 		e.EventDate = eventDate.String
 		e.City = city.String
 		e.Scope = scope.String
@@ -368,11 +370,11 @@ func (r *EventRepository) CountByStatus(userID string) (pending, approved, rejec
 	return
 }
 
-// SetEventDate sets or clears the specific event date for an approved event.
-func (r *EventRepository) SetEventDate(id, date string) error {
+// SetEventDate sets or clears the event_date and recurrence_end_date for an approved event.
+func (r *EventRepository) SetEventDate(id, date, recurrenceEndDate string) error {
 	_, err := r.db.Exec(
-		`UPDATE events SET event_date=?, updated_at=datetime('now') WHERE id=?`,
-		nullIfEmpty(date), id,
+		`UPDATE events SET event_date=?, recurrence_end_date=?, updated_at=datetime('now') WHERE id=?`,
+		nullIfEmpty(date), nullIfEmpty(recurrenceEndDate), id,
 	)
 	return err
 }
@@ -402,13 +404,13 @@ func (r *EventRepository) BulkCreate(events []*models.Event) error {
 		}
 
 		if _, err := tx.Exec(`
-			INSERT INTO events (id, user_id, name, quarter, year, description, recurrence,
+			INSERT INTO events (id, user_id, name, quarter, year, description, recurrence, recurrence_end_date,
 			                    city, scope, scope_jamatkhana, venue_type, venue_jamatkhana, venue_address,
 			                    outcome, impact, event_date, status)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			e.ID, e.UserID,
 			nullIfEmpty(e.Name), nullIfEmpty(e.Quarter), nullIfZero(e.Year),
-			e.Description, e.Recurrence,
+			e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
 			nullIfEmpty(e.City), scope, nullIfEmpty(e.ScopeJamatkhana),
 			venueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 			e.Outcome, e.Impact, nullIfEmpty(e.EventDate), e.Status,

@@ -1,0 +1,28 @@
+# fly.toml — generated for IPN Events
+# Run `fly launch` to create the app, then `fly deploy` to ship updates.
+
+app = 'ipn-events'        # change this if the name is already taken on Fly
+primary_region = 'iad'    # iad = Washington DC (closest to Atlanta)
+
+[build]
+
+[env]
+  APP_PORT = "8080"
+  DB_PATH  = "/data/ipn-events.db"
+
+# Persistent volume for the SQLite database file
+[mounts]
+  source      = "ipn_events_data"
+  destination = "/data"
+
+[http_service]
+  internal_port       = 8080
+  force_https         = true
+  auto_stop_machines  = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

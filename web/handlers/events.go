@@ -175,10 +175,11 @@ func parseEventForm(r *http.Request) *models.Event {
 	}
 
 	e := &models.Event{
-		Name:        strings.TrimSpace(r.FormValue("name")),
-		Quarter:     r.FormValue("quarter"),
-		Year:        year,
-		Recurrence:  recurrence,
+		Name:              strings.TrimSpace(r.FormValue("name")),
+		Quarter:           r.FormValue("quarter"),
+		Year:              year,
+		Recurrence:        recurrence,
+		RecurrenceEndDate: strings.TrimSpace(r.FormValue("recurrence_end_date")),
 		Description: strings.TrimSpace(r.FormValue("description")),
 		City:        strings.TrimSpace(r.FormValue("city")),
 		Scope:       scope,

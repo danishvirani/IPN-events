@@ -33,15 +33,21 @@ type calendarYear struct {
 // CalDayCell is a single cell in a month grid (Day=0 means empty padding).
 type CalDayCell struct {
 	Day    int
-	Events []*models.Event
+	Events []*models.Event // only events with event_date on this exact day
+}
+
+// CalEvent wraps an event with an optional date label for calendar display.
+type CalEvent struct {
+	Event     *models.Event
+	DateLabel string // "Jan 18" if event_date falls in this specific month; empty otherwise
 }
 
 // CalMonth is one month's mini-calendar grid plus the events for that month.
 type CalMonth struct {
 	Name        string
 	Month       int
-	MonthEvents []*models.Event // events whose quarter starts this month
-	Cells       []CalDayCell    // padded day cells (0 = empty)
+	MonthEvents []CalEvent // all events active in this month
+	Cells       []CalDayCell
 }
 
 // CalPageData is passed to calendar.html.
@@ -63,41 +69,122 @@ var monthNames = [12]string{
 	"July", "August", "September", "October", "November", "December",
 }
 
+// eventMonthsForYear returns the list of months (1-12) this event is active in for the given year.
+// Returns nil for events that don't belong to this year or have no quarter.
+func eventMonthsForYear(e *models.Event, year int) []int {
+	if e.Year != year {
+		return nil
+	}
+
+	// Non-recurring event with a specific date: use that date's month
+	if e.EventDate != "" && (e.Recurrence == "" || e.Recurrence == models.RecurrenceNone) {
+		t, err := time.Parse("2006-01-02", e.EventDate)
+		if err == nil && t.Year() == year {
+			return []int{int(t.Month())}
+		}
+	}
+
+	startMonth, hasQuarter := quarterStartMonth[e.Quarter]
+	if !hasQuarter {
+		return nil // unscheduled
+	}
+
+	// Determine end month (default: end of year)
+	endMonth := 12
+	if e.RecurrenceEndDate != "" {
+		t, err := time.Parse("2006-01-02", e.RecurrenceEndDate)
+		if err == nil {
+			if t.Year() < year {
+				return nil // already ended
+			}
+			if t.Year() == year {
+				endMonth = int(t.Month())
+			}
+			// t.Year() > year → runs full year, endMonth stays 12
+		}
+	}
+
+	switch e.Recurrence {
+	case models.RecurrenceMonthly, models.RecurrenceWeekly, models.RecurrenceBiWeekly:
+		months := make([]int, 0, endMonth-startMonth+1)
+		for m := startMonth; m <= endMonth; m++ {
+			months = append(months, m)
+		}
+		return months
+	case models.RecurrenceQuarterly:
+		var months []int
+		for _, m := range []int{1, 4, 7, 10} {
+			if m >= startMonth && m <= endMonth {
+				months = append(months, m)
+			}
+		}
+		return months
+	default: // none, annual
+		return []int{startMonth}
+	}
+}
+
 // buildCalPage converts a flat event list into CalPageData for the given year.
 func buildCalPage(events []*models.Event, year int) CalPageData {
-	// Bucket events: month→day→events
-	type key struct{ month, day int }
-	byDate := map[key][]*models.Event{}
+	type dayKey struct{ month, day int }
+
+	// byDate: only events with a specific event_date → for grid highlighting
+	byDate := map[dayKey][]*models.Event{}
+	// monthEventsList: all events active in each month → for the event list below the grid
+	monthEventsList := map[int][]CalEvent{}
 	var unscheduled []*models.Event
 
 	for _, e := range events {
 		if e.Year != year {
 			continue
 		}
-		m, ok := quarterStartMonth[e.Quarter]
-		if !ok {
-			unscheduled = append(unscheduled, e)
+
+		// Grid highlight: place on specific date if event_date is set
+		if e.EventDate != "" {
+			t, err := time.Parse("2006-01-02", e.EventDate)
+			if err == nil && t.Year() == year {
+				k := dayKey{int(t.Month()), t.Day()}
+				byDate[k] = append(byDate[k], e)
+			}
+		}
+
+		// Determine which months this event appears in the list
+		months := eventMonthsForYear(e, year)
+		if len(months) == 0 {
+			// No quarter and no usable date: show in unscheduled
+			_, hasQ := quarterStartMonth[e.Quarter]
+			if !hasQ {
+				unscheduled = append(unscheduled, e)
+			}
 			continue
 		}
-		k := key{m, 1}
-		byDate[k] = append(byDate[k], e)
+
+		for _, m := range months {
+			// Build a date label only for the month the event_date actually falls in
+			dateLabel := ""
+			if e.EventDate != "" {
+				t, err := time.Parse("2006-01-02", e.EventDate)
+				if err == nil && t.Year() == year && int(t.Month()) == m {
+					dateLabel = fmt.Sprintf("%s %d", monthNames[m-1][:3], t.Day())
+				}
+			}
+			monthEventsList[m] = append(monthEventsList[m], CalEvent{Event: e, DateLabel: dateLabel})
+		}
 	}
 
 	months := make([]CalMonth, 12)
 	for m := 1; m <= 12; m++ {
 		firstDay := time.Date(year, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
-		// days in month: day 0 of next month
 		daysInMonth := time.Date(year, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()
 		offset := int(firstDay.Weekday()) // Sunday = 0
 
-		cells := make([]CalDayCell, offset) // leading empty cells
+		cells := make([]CalDayCell, offset)
 		for d := 1; d <= daysInMonth; d++ {
 			cells = append(cells, CalDayCell{
 				Day:    d,
-				Events: byDate[key{m, d}],
+				Events: byDate[dayKey{m, d}],
 			})
 		}
-		// Pad to complete last row (multiple of 7)
 		for len(cells)%7 != 0 {
 			cells = append(cells, CalDayCell{})
 		}
@@ -105,7 +192,7 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 		months[m-1] = CalMonth{
 			Name:        monthNames[m-1],
 			Month:       m,
-			MonthEvents: byDate[key{m, 1}],
+			MonthEvents: monthEventsList[m],
 			Cells:       cells,
 		}
 	}
@@ -283,17 +370,22 @@ func (h *AdminEventHandler) SetDate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := h.eventRepo.SetEventDate(id, date); err != nil {
+	endDate := strings.TrimSpace(r.FormValue("recurrence_end_date"))
+	if endDate != "" {
+		if _, err := time.Parse("2006-01-02", endDate); err != nil {
+			setFlash(w, "error", "Invalid recurrence end date format. Use YYYY-MM-DD.")
+			http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+			return
+		}
+	}
+
+	if err := h.eventRepo.SetEventDate(id, date, endDate); err != nil {
 		setFlash(w, "error", "Failed to set event date.")
 		http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
 		return
 	}
 
-	if date == "" {
-		setFlash(w, "success", "Event date cleared.")
-	} else {
-		setFlash(w, "success", "Event date set to "+date+".")
-	}
+	setFlash(w, "success", "Dates saved.")
 	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
 }
 
