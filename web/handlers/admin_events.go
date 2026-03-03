@@ -601,11 +601,11 @@ func (h *AdminEventHandler) DownloadTemplate(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Disposition", `attachment; filename="events_template.csv"`)
 
 	headers := []string{
-		"name", "quarter", "year", "description", "recurrence",
+		"name", "quarter", "year", "description", "recurrence", "recurrence_end_date",
+		"event_date", "start_time", "end_time",
 		"outcome", "impact",
 		"financial_resources", "facilities", "human_support", "technology", "partnerships",
 		"structured_programming", "engagement_design", "content_delivery", "community_building",
-		"event_date",
 	}
 	writer := csv.NewWriter(w)
 	_ = writer.Write(headers)
@@ -650,7 +650,7 @@ func (h *AdminEventHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 		colIdx[strings.TrimSpace(h)] = i
 	}
 
-	for _, col := range []string{"name", "year", "description"} {
+	for _, col := range []string{"name", "quarter", "year", "description"} {
 		if _, ok := colIdx[col]; !ok {
 			setFlash(w, "error", "CSV is missing required column: "+col)
 			http.Redirect(w, r, "/admin/events/import", http.StatusSeeOther)
@@ -687,15 +687,18 @@ func (h *AdminEventHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 		}
 
 		e := &models.Event{
-			UserID:      adminUser.ID,
-			Name:        getCol(row, "name"),
-			Quarter:     getCol(row, "quarter"),
-			Year:        yearInt,
-			Recurrence:  recurrence,
-			Description: getCol(row, "description"),
-			Outcome:     getCol(row, "outcome"),
-			Impact:      getCol(row, "impact"),
-			EventDate:   getCol(row, "event_date"),
+			UserID:            adminUser.ID,
+			Name:              getCol(row, "name"),
+			Quarter:           getCol(row, "quarter"),
+			Year:              yearInt,
+			Recurrence:        recurrence,
+			RecurrenceEndDate: getCol(row, "recurrence_end_date"),
+			EventDate:         getCol(row, "event_date"),
+			StartTime:         getCol(row, "start_time"),
+			EndTime:           getCol(row, "end_time"),
+			Description:       getCol(row, "description"),
+			Outcome:           getCol(row, "outcome"),
+			Impact:            getCol(row, "impact"),
 			Input: models.EventInput{
 				FinancialResources: getCol(row, "financial_resources"),
 				Facilities:         getCol(row, "facilities"),
@@ -711,8 +714,8 @@ func (h *AdminEventHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 
-		if strings.TrimSpace(e.Name) == "" || strings.TrimSpace(e.Description) == "" || e.Year == 0 {
-			setFlash(w, "error", fmt.Sprintf("Row %d: name, description, and year are required.", lineNum))
+		if strings.TrimSpace(e.Name) == "" || strings.TrimSpace(e.Description) == "" || e.Year == 0 || e.Quarter == "" {
+			setFlash(w, "error", fmt.Sprintf("Row %d: name, quarter, description, and year are required.", lineNum))
 			http.Redirect(w, r, "/admin/events/import", http.StatusSeeOther)
 			return
 		}

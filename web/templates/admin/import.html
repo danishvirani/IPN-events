@@ -40,23 +40,31 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
+          <tr class="bg-gray-50"><td colspan="3" class="py-1.5 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Core Fields</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">name</td><td class="py-2 pr-6 text-red-600 text-xs font-medium">Yes</td><td class="py-2 text-xs text-gray-500">Event name</td></tr>
-          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">quarter</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Q1, Q2, Q3, or Q4 — leave blank if unknown</td></tr>
-          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">year</td><td class="py-2 pr-6 text-red-600 text-xs font-medium">Yes</td><td class="py-2 text-xs text-gray-500">4-digit year, e.g. 2025</td></tr>
+          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">quarter</td><td class="py-2 pr-6 text-red-600 text-xs font-medium">Yes</td><td class="py-2 text-xs text-gray-500">Q1, Q2, Q3, or Q4</td></tr>
+          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">year</td><td class="py-2 pr-6 text-red-600 text-xs font-medium">Yes</td><td class="py-2 text-xs text-gray-500">4-digit year, e.g. 2026</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">description</td><td class="py-2 pr-6 text-red-600 text-xs font-medium">Yes</td><td class="py-2 text-xs text-gray-500">Full event description</td></tr>
+          <tr class="bg-gray-50"><td colspan="3" class="py-1.5 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Scheduling</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">recurrence</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">none · weekly · bi-weekly · monthly · quarterly · annual</td></tr>
+          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">recurrence_end_date</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">YYYY-MM-DD — last date the recurring event runs, e.g. 2026-12-31</td></tr>
+          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">event_date</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">YYYY-MM-DD — confirmed date, e.g. 2026-03-15</td></tr>
+          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">start_time</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">HH:MM (24-hour), e.g. 09:00</td></tr>
+          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">end_time</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">HH:MM (24-hour), e.g. 12:30</td></tr>
+          <tr class="bg-gray-50"><td colspan="3" class="py-1.5 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Outcomes</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">outcome</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Short-to-medium term benefits</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">impact</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Long-term community effect</td></tr>
+          <tr class="bg-gray-50"><td colspan="3" class="py-1.5 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Inputs</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">financial_resources</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Budget, sponsorship, food…</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">facilities</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Venue, room setup, AV…</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">human_support</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Volunteers, speakers, moderators…</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">technology</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Registration platform, AV, slides…</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">partnerships</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">IHPA, IPEA, ISN, Civic…</td></tr>
+          <tr class="bg-gray-50"><td colspan="3" class="py-1.5 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Activities</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">structured_programming</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Panels, workshops, demos…</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">engagement_design</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Icebreakers, breakout sessions…</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">content_delivery</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Presentations, AI demos…</td></tr>
           <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">community_building</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">Community-building components</td></tr>
-          <tr><td class="py-2 pr-6 font-mono text-xs text-blue-700">event_date</td><td class="py-2 pr-6 text-gray-400 text-xs">No</td><td class="py-2 text-xs text-gray-500">YYYY-MM-DD, e.g. 2025-03-15</td></tr>
         </tbody>
       </table>
     </div>

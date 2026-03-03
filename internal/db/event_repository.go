@@ -423,12 +423,14 @@ func (r *EventRepository) BulkCreate(events []*models.Event) error {
 
 		if _, err := tx.Exec(`
 			INSERT INTO events (id, user_id, name, quarter, year, description, recurrence, recurrence_end_date,
+			                    start_time, end_time,
 			                    city, scope, scope_jamatkhana, venue_type, venue_jamatkhana, venue_address,
 			                    outcome, impact, event_date, status)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			e.ID, e.UserID,
 			nullIfEmpty(e.Name), nullIfEmpty(e.Quarter), nullIfZero(e.Year),
 			e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
+			nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime),
 			nullIfEmpty(e.City), scope, nullIfEmpty(e.ScopeJamatkhana),
 			venueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 			e.Outcome, e.Impact, nullIfEmpty(e.EventDate), e.Status,
