@@ -25,8 +25,8 @@
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Quarter</label>
-        <select name="quarter" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Quarter <span class="text-red-500">*</span></label>
+        <select name="quarter" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
           <option value="">— Select —</option>
           <option value="Q1" {{if eq $e.Quarter "Q1"}}selected{{end}}>Q1 (Jan–Mar)</option>
           <option value="Q2" {{if eq $e.Quarter "Q2"}}selected{{end}}>Q2 (Apr–Jun)</option>

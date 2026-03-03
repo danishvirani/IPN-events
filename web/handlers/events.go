@@ -85,6 +85,11 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/events/new", http.StatusSeeOther)
 		return
 	}
+	if e.Quarter == "" {
+		setFlash(w, "error", "Quarter is required.")
+		http.Redirect(w, r, "/events/new", http.StatusSeeOther)
+		return
+	}
 	if e.Year == 0 {
 		setFlash(w, "error", "Year is required.")
 		http.Redirect(w, r, "/events/new", http.StatusSeeOther)
@@ -191,6 +196,11 @@ func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	if strings.TrimSpace(updated.Name) == "" || strings.TrimSpace(updated.Description) == "" {
 		setFlash(w, "error", "Event name and description are required.")
+		http.Redirect(w, r, "/events/"+id+"/edit", http.StatusSeeOther)
+		return
+	}
+	if updated.Quarter == "" {
+		setFlash(w, "error", "Quarter is required.")
 		http.Redirect(w, r, "/events/"+id+"/edit", http.StatusSeeOther)
 		return
 	}
