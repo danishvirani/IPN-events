@@ -62,6 +62,9 @@ type Event struct {
 	Recurrence        string
 	RecurrenceEndDate string // YYYY-MM-DD; empty = no end date (runs through year)
 	EventDate         string
+	StartTime         string // HH:MM (24h)
+	EndTime           string // HH:MM (24h)
+	ImagePath         string // relative path under uploads dir, e.g. "abc123.jpg"
 	Description string
 
 	City            string

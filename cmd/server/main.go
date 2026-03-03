@@ -22,6 +22,11 @@ import (
 func main() {
 	cfg := config.Load()
 
+	// Ensure upload directory exists
+	if err := os.MkdirAll(cfg.UploadDir, 0755); err != nil {
+		log.Fatalf("cannot create upload dir: %v", err)
+	}
+
 	// Database
 	sqlDB := db.Open(cfg.DBPath)
 	defer sqlDB.Close()
@@ -64,7 +69,7 @@ func main() {
 	// Handlers
 	authHandler       := handlers.NewAuthHandler(sessionSvc, userRepo, inviteRepo, googleAuth, cfg.AdminEmail)
 	dashboardHandler  := handlers.NewDashboardHandler(eventRepo, userRepo)
-	eventHandler      := handlers.NewEventHandler(eventRepo)
+	eventHandler      := handlers.NewEventHandler(eventRepo, cfg.UploadDir)
 	adminEventHandler := handlers.NewAdminEventHandler(eventRepo)
 	adminUserHandler  := handlers.NewAdminUserHandler(userRepo)
 	adminInviteHandler := handlers.NewAdminInviteHandler(inviteRepo, baseURL)
@@ -78,6 +83,9 @@ func main() {
 
 	// Static files
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+
+	// Uploaded event images (stored on disk)
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir))))
 
 	// Public
 	r.Get("/login",         authHandler.ShowLogin)
@@ -112,8 +120,9 @@ func main() {
 
 			r.Get("/admin/dashboard", dashboardHandler.AdminDashboard)
 
-			r.Get("/admin/calendar", adminEventHandler.Calendar)
-			r.Get("/admin/roadmap",  adminEventHandler.Roadmap)
+			r.Get("/admin/calendar",      adminEventHandler.Calendar)
+			r.Get("/admin/roadmap",       adminEventHandler.Roadmap)
+			r.Get("/admin/roadmap/pdf",   adminEventHandler.RoadmapPDF)
 
 			r.Get("/admin/events",                        adminEventHandler.List)
 			r.Get("/admin/events/csv-template",           adminEventHandler.DownloadTemplate)

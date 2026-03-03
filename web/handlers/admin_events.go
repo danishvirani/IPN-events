@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-pdf/fpdf"
 
 	"ipn-events/internal/db"
 	"ipn-events/internal/models"
@@ -291,6 +292,211 @@ func (h *AdminEventHandler) Roadmap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render(w, r, "web/templates/admin/roadmap.html", groupByYear(events))
+}
+
+// RoadmapPDF generates and streams a PDF version of the roadmap.
+func (h *AdminEventHandler) RoadmapPDF(w http.ResponseWriter, r *http.Request) {
+	events, err := h.eventRepo.ListForCalendar()
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	years := groupByYear(events)
+
+	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(15, 15, 15)
+	pdf.SetAutoPageBreak(true, 18)
+	pdf.AddPage()
+
+	pageW, _ := pdf.GetPageSize()
+	contentW := pageW - 30 // left+right margins
+
+	// ── Header banner ─────────────────────────────────────────────────────────
+	pdf.SetFillColor(10, 22, 40) // #0a1628 navy
+	pdf.Rect(0, 0, pageW, 28, "F")
+
+	pdf.SetFont("Helvetica", "B", 18)
+	pdf.SetTextColor(255, 255, 255)
+	pdf.SetXY(15, 7)
+	pdf.Cell(contentW, 8, "IPN Southeast Events")
+
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.SetTextColor(180, 195, 220)
+	pdf.SetXY(15, 17)
+	pdf.Cell(contentW, 5, "Event Roadmap  ·  Generated "+time.Now().Format("January 2, 2006"))
+
+	pdf.SetXY(15, 34)
+
+	// quarter colour palette  (R, G, B) pairs
+	type qStyle struct {
+		label    string
+		months   string
+		r, g, b  int // header bg
+		tr, tg, tb int // header text
+		br, bg_, bb int // border
+	}
+	qStyles := map[string]qStyle{
+		"Q1": {"Q1", "January – March", 59, 130, 246, 30, 64, 175, 147, 197, 253},
+		"Q2": {"Q2", "April – June", 34, 197, 94, 20, 83, 45, 134, 239, 172},
+		"Q3": {"Q3", "July – September", 234, 179, 8, 113, 63, 18, 253, 224, 71},
+		"Q4": {"Q4", "October – December", 168, 85, 247, 88, 28, 135, 216, 180, 254},
+	}
+
+	truncate := func(s string, max int) string {
+		if len([]rune(s)) <= max {
+			return s
+		}
+		return string([]rune(s)[:max-1]) + "…"
+	}
+
+	for _, cy := range years {
+		// ── Year banner ───────────────────────────────────────────────────────
+		pdf.Ln(4)
+		pdf.SetFont("Helvetica", "B", 13)
+		pdf.SetTextColor(10, 22, 40)
+
+		yearLabel := fmt.Sprintf("%d", cy.Year)
+		if cy.Year == 0 {
+			yearLabel = "Unscheduled"
+		}
+
+		// Pill background
+		tw := pdf.GetStringWidth(yearLabel) + 10
+		pdf.SetFillColor(10, 22, 40)
+		pdf.RoundedRect(pdf.GetX(), pdf.GetY(), tw, 7, 3, "1234", "F")
+		pdf.SetTextColor(255, 255, 255)
+		pdf.SetXY(pdf.GetX(), pdf.GetY())
+		pdf.CellFormat(tw, 7, yearLabel, "", 0, "C", false, 0, "")
+
+		// Dashed line to the right
+		pdf.SetDrawColor(200, 200, 200)
+		lineY := pdf.GetY() + 3.5
+		lineX := pdf.GetX() + 4
+		for x := lineX; x < pageW-15; x += 4 {
+			pdf.Line(x, lineY, x+2, lineY)
+		}
+		pdf.Ln(10)
+
+		// ── Quarters ─────────────────────────────────────────────────────────
+		quarters := []struct {
+			key    string
+			events []*models.Event
+		}{
+			{"Q1", cy.Q1},
+			{"Q2", cy.Q2},
+			{"Q3", cy.Q3},
+			{"Q4", cy.Q4},
+		}
+		if len(cy.Unscheduled) > 0 {
+			quarters = append(quarters, struct {
+				key    string
+				events []*models.Event
+			}{"No Quarter", cy.Unscheduled})
+		}
+
+		for _, q := range quarters {
+			if len(q.events) == 0 {
+				continue
+			}
+
+			qs, hasStyle := qStyles[q.key]
+			if !hasStyle {
+				qs = qStyle{"–", "", 150, 150, 150, 60, 60, 60, 200, 200, 200}
+			}
+
+			// Ensure the header + at least one row fits on the current page
+			pdf.SetAutoPageBreak(false, 0)
+			if pdf.GetY()+12+float64(len(q.events))*9 > 277 {
+				pdf.AddPage()
+				pdf.SetXY(15, 20)
+			}
+			pdf.SetAutoPageBreak(true, 18)
+
+			startX := pdf.GetX()
+			startY := pdf.GetY()
+
+			// Quarter header bar
+			pdf.SetFillColor(qs.r, qs.g, qs.b)
+			pdf.SetDrawColor(qs.br, qs.bg_, qs.bb)
+			pdf.RoundedRectExt(startX, startY, contentW, 8, 2, 2, 0, 0, "FD")
+
+			pdf.SetFont("Helvetica", "B", 10)
+			pdf.SetTextColor(qs.tr, qs.tg, qs.tb)
+			pdf.SetXY(startX+3, startY+1.5)
+			pdf.Cell(20, 5, qs.label)
+
+			pdf.SetFont("Helvetica", "", 9)
+			pdf.SetTextColor(qs.tr, qs.tg, qs.tb)
+			pdf.SetXY(startX+22, startY+1.5)
+			pdf.Cell(60, 5, qs.months)
+
+			countLabel := fmt.Sprintf("%d event", len(q.events))
+			if len(q.events) != 1 {
+				countLabel += "s"
+			}
+			pdf.SetFont("Helvetica", "", 8)
+			pdf.SetXY(startX, startY+1.5)
+			pdf.CellFormat(contentW-3, 5, countLabel, "", 0, "R", false, 0, "")
+
+			// Event rows
+			for i, e := range q.events {
+				rowY := startY + 8 + float64(i)*9
+				// Zebra stripe
+				if i%2 == 0 {
+					pdf.SetFillColor(248, 250, 252)
+				} else {
+					pdf.SetFillColor(255, 255, 255)
+				}
+				// Border left+right+bottom only
+				roundedBits := "0"
+				if i == len(q.events)-1 {
+					roundedBits = "34" // bottom-left + bottom-right
+				}
+				pdf.SetDrawColor(qs.br, qs.bg_, qs.bb)
+				pdf.RoundedRectExt(startX, rowY, contentW, 9, 0, 0, 2, 2, roundedBits+"FD")
+
+				// Event name
+				pdf.SetFont("Helvetica", "B", 9)
+				pdf.SetTextColor(30, 30, 30)
+				pdf.SetXY(startX+4, rowY+1.5)
+				name := truncate(e.Name, 55)
+				pdf.Cell(contentW*0.55, 5, name)
+
+				// Description (truncated)
+				if e.Description != "" {
+					pdf.SetFont("Helvetica", "", 8)
+					pdf.SetTextColor(120, 120, 120)
+					desc := truncate(e.Description, 50)
+					pdf.SetXY(startX+4, rowY+5.5)
+					pdf.Cell(contentW*0.7, 3.5, desc)
+				}
+
+				// Submitter name (right-aligned)
+				if e.UserName != "" {
+					pdf.SetFont("Helvetica", "", 8)
+					pdf.SetTextColor(150, 150, 150)
+					pdf.SetXY(startX, rowY+1.5)
+					pdf.CellFormat(contentW-3, 5, e.UserName, "", 0, "R", false, 0, "")
+				}
+			}
+
+			pdf.SetXY(15, startY+8+float64(len(q.events))*9+4)
+		}
+
+		pdf.Ln(4)
+	}
+
+	// ── Footer ────────────────────────────────────────────────────────────────
+	pdf.SetY(-12)
+	pdf.SetFont("Helvetica", "I", 8)
+	pdf.SetTextColor(160, 160, 160)
+	pdf.CellFormat(contentW, 5, "IPN Southeast Events  ·  Confidential", "", 0, "C", false, 0, "")
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="ipn-roadmap.pdf"`)
+	if err := pdf.Output(w); err != nil {
+		http.Error(w, "Failed to generate PDF", http.StatusInternalServerError)
+	}
 }
 
 // groupByYear organises a flat event list into calendarYear structs.

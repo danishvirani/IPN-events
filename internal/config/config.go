@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Port               string
 	DBPath             string
+	UploadDir          string
 	SessionDuration    time.Duration
 	AdminEmail         string
 	AdminPassword      string
@@ -42,6 +43,11 @@ func Load() *Config {
 		dbPath = "./ipn-events.db"
 	}
 
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+
 	callbackURL := os.Getenv("GOOGLE_CALLBACK_URL")
 	if callbackURL == "" {
 		callbackURL = "http://localhost:8080/auth/callback"
@@ -50,6 +56,7 @@ func Load() *Config {
 	return &Config{
 		Port:               port,
 		DBPath:             dbPath,
+		UploadDir:          uploadDir,
 		SessionDuration:    time.Duration(hours) * time.Hour,
 		AdminEmail:         os.Getenv("ADMIN_EMAIL"),
 		AdminPassword:      os.Getenv("ADMIN_PASSWORD"),

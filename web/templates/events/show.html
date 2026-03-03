@@ -28,7 +28,9 @@
     <p class="text-gray-500 text-sm mt-0.5">Recurrence: <span class="font-medium text-gray-700 capitalize">{{$e.Recurrence}}</span>{{if $e.RecurrenceEndDate}} <span class="text-gray-400">· ends {{$e.RecurrenceEndDate}}</span>{{end}}</p>
     {{end}}
     {{if $e.EventDate}}
-    <p class="text-gray-500 text-sm mt-0.5">Date: <span class="font-medium text-gray-700">{{$e.EventDate}}</span></p>
+    <p class="text-gray-500 text-sm mt-0.5">Date: <span class="font-medium text-gray-700">{{$e.EventDate}}</span>{{if $e.StartTime}} · <span class="font-medium text-gray-700">{{$e.StartTime}}{{if $e.EndTime}} – {{$e.EndTime}}{{end}}</span>{{end}}</p>
+    {{else if $e.StartTime}}
+    <p class="text-gray-500 text-sm mt-0.5">Time: <span class="font-medium text-gray-700">{{$e.StartTime}}{{if $e.EndTime}} – {{$e.EndTime}}{{end}}</span></p>
     {{end}}
   </div>
   <div class="flex gap-2">
@@ -57,6 +59,12 @@
 <div class="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
   <p class="text-sm font-semibold text-green-700 mb-1">Admin Note</p>
   <p class="text-sm text-green-700">{{$e.AdminComment}}</p>
+</div>
+{{end}}
+
+{{if $e.ImagePath}}
+<div class="mb-6">
+  <img src="/uploads/{{$e.ImagePath}}" alt="{{$e.Name}}" class="w-full max-h-72 object-cover rounded-xl border border-gray-200 shadow-sm">
 </div>
 {{end}}
 

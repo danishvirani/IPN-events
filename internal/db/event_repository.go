@@ -33,12 +33,14 @@ func (r *EventRepository) Create(e *models.Event) error {
 
 	if _, err := tx.Exec(`
 		INSERT INTO events (id, user_id, name, quarter, year, description, recurrence, recurrence_end_date,
+		                    start_time, end_time, image_path,
 		                    city, scope, scope_jamatkhana, venue_type, venue_jamatkhana, venue_address,
 		                    outcome, impact, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.ID, e.UserID,
 		nullIfEmpty(e.Name), nullIfEmpty(e.Quarter), nullIfZero(e.Year),
 		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
+		nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 		e.Outcome, e.Impact, e.Status,
@@ -102,12 +104,14 @@ func (r *EventRepository) Update(e *models.Event) error {
 
 	if _, err := tx.Exec(`
 		UPDATE events SET name=?, quarter=?, year=?, description=?, recurrence=?, recurrence_end_date=?,
+		                  start_time=?, end_time=?, image_path=?,
 		                  city=?, scope=?, scope_jamatkhana=?, venue_type=?, venue_jamatkhana=?, venue_address=?,
 		                  outcome=?, impact=?,
 		                  status=?, admin_comment=NULL, updated_at=datetime('now')
 		WHERE id=?`,
 		e.Name, nullIfEmpty(e.Quarter), nullIfZero(e.Year),
 		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
+		nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 		e.Outcome, e.Impact, models.StatusPending, e.ID,
@@ -169,12 +173,14 @@ func (r *EventRepository) Update(e *models.Event) error {
 func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	e := &models.Event{}
 	var quarter, outcome, impact, adminComment, recurrence, recurrenceEndDate, eventDate sql.NullString
+	var startTime, endTime, imagePath sql.NullString
 	var city, scopeJK, venueJK, venueAddr sql.NullString
 	var year sql.NullInt64
 
 	err := r.db.QueryRow(`
 		SELECT e.id, e.user_id, u.name, u.email,
 		       e.name, e.quarter, e.year, e.description, e.recurrence, e.recurrence_end_date, e.event_date,
+		       e.start_time, e.end_time, e.image_path,
 		       e.city, e.scope, e.scope_jamatkhana, e.venue_type, e.venue_jamatkhana, e.venue_address,
 		       e.outcome, e.impact, e.status, e.admin_comment, e.created_at, e.updated_at
 		FROM events e
@@ -183,6 +189,7 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	).Scan(
 		&e.ID, &e.UserID, &e.UserName, &e.UserEmail,
 		&e.Name, &quarter, &year, &e.Description, &recurrence, &recurrenceEndDate, &eventDate,
+		&startTime, &endTime, &imagePath,
 		&city, &e.Scope, &scopeJK, &e.VenueType, &venueJK, &venueAddr,
 		&outcome, &impact, &e.Status, &adminComment, &e.CreatedAt, &e.UpdatedAt,
 	)
@@ -197,6 +204,9 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	}
 	e.RecurrenceEndDate = recurrenceEndDate.String
 	e.EventDate = eventDate.String
+	e.StartTime = startTime.String
+	e.EndTime = endTime.String
+	e.ImagePath = imagePath.String
 	e.City = city.String
 	e.ScopeJamatkhana = scopeJK.String
 	e.VenueJamatkhana = venueJK.String
@@ -279,7 +289,9 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 	query := `
 		SELECT e.id, e.user_id, u.name, u.email,
 		       e.name, e.quarter, e.year, e.description,
-		       e.recurrence, e.recurrence_end_date, e.event_date, e.city, e.scope,
+		       e.recurrence, e.recurrence_end_date, e.event_date,
+		       e.start_time, e.end_time, e.image_path,
+		       e.city, e.scope,
 		       e.status, e.admin_comment, e.created_at, e.updated_at
 		FROM events e
 		JOIN users u ON e.user_id = u.id ` + whereClause
@@ -293,12 +305,15 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 	var events []*models.Event
 	for rows.Next() {
 		e := &models.Event{}
-		var quarter, adminComment, recurrence, recurrenceEndDate, eventDate, city, scope sql.NullString
+		var quarter, adminComment, recurrence, recurrenceEndDate, eventDate sql.NullString
+		var startTime, endTime, imagePath, city, scope sql.NullString
 		var year sql.NullInt64
 		if err := rows.Scan(
 			&e.ID, &e.UserID, &e.UserName, &e.UserEmail,
 			&e.Name, &quarter, &year, &e.Description,
-			&recurrence, &recurrenceEndDate, &eventDate, &city, &scope,
+			&recurrence, &recurrenceEndDate, &eventDate,
+			&startTime, &endTime, &imagePath,
+			&city, &scope,
 			&e.Status, &adminComment, &e.CreatedAt, &e.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -311,6 +326,9 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 		}
 		e.RecurrenceEndDate = recurrenceEndDate.String
 		e.EventDate = eventDate.String
+		e.StartTime = startTime.String
+		e.EndTime = endTime.String
+		e.ImagePath = imagePath.String
 		e.City = city.String
 		e.Scope = scope.String
 		e.AdminComment = adminComment.String

@@ -1,11 +1,16 @@
 package handlers
 
 import (
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"ipn-events/internal/db"
 	"ipn-events/internal/models"
@@ -14,10 +19,43 @@ import (
 
 type EventHandler struct {
 	eventRepo *db.EventRepository
+	uploadDir string
 }
 
-func NewEventHandler(eventRepo *db.EventRepository) *EventHandler {
-	return &EventHandler{eventRepo: eventRepo}
+func NewEventHandler(eventRepo *db.EventRepository, uploadDir string) *EventHandler {
+	return &EventHandler{eventRepo: eventRepo, uploadDir: uploadDir}
+}
+
+// saveImage handles image upload from a multipart form field named "image".
+// Returns the saved filename (relative), or keepExisting if no new file was uploaded.
+func (h *EventHandler) saveImage(r *http.Request, keepExisting string) (string, error) {
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		// No file uploaded — keep existing image
+		return keepExisting, nil
+	}
+	defer file.Close()
+
+	if header.Size > 8<<20 {
+		return "", fmt.Errorf("image must be under 8 MB")
+	}
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp":
+	default:
+		return "", fmt.Errorf("unsupported image type; use JPG, PNG, GIF, or WebP")
+	}
+
+	filename := uuid.New().String() + ext
+	dst, err := os.Create(filepath.Join(h.uploadDir, filename))
+	if err != nil {
+		return "", fmt.Errorf("could not save image")
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, file); err != nil {
+		return "", fmt.Errorf("could not save image")
+	}
+	return filename, nil
 }
 
 func (h *EventHandler) New(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +63,7 @@ func (h *EventHandler) New(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
@@ -33,6 +71,14 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	e := parseEventForm(r)
 	e.UserID = user.ID
+
+	imagePath, err := h.saveImage(r, "")
+	if err != nil {
+		setFlash(w, "error", err.Error())
+		http.Redirect(w, r, "/events/new", http.StatusSeeOther)
+		return
+	}
+	e.ImagePath = imagePath
 
 	if strings.TrimSpace(e.Name) == "" || strings.TrimSpace(e.Description) == "" {
 		setFlash(w, "error", "Event name and description are required.")
@@ -107,7 +153,7 @@ func (h *EventHandler) Edit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
@@ -133,6 +179,15 @@ func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
 	updated := parseEventForm(r)
 	updated.ID = id
 	updated.UserID = user.ID
+
+	// Preserve existing image; replace if a new one was uploaded
+	imagePath, err := h.saveImage(r, e.ImagePath)
+	if err != nil {
+		setFlash(w, "error", err.Error())
+		http.Redirect(w, r, "/events/"+id+"/edit", http.StatusSeeOther)
+		return
+	}
+	updated.ImagePath = imagePath
 
 	if strings.TrimSpace(updated.Name) == "" || strings.TrimSpace(updated.Description) == "" {
 		setFlash(w, "error", "Event name and description are required.")
@@ -180,6 +235,8 @@ func parseEventForm(r *http.Request) *models.Event {
 		Year:              year,
 		Recurrence:        recurrence,
 		RecurrenceEndDate: strings.TrimSpace(r.FormValue("recurrence_end_date")),
+		StartTime:         strings.TrimSpace(r.FormValue("start_time")),
+		EndTime:           strings.TrimSpace(r.FormValue("end_time")),
 		Description: strings.TrimSpace(r.FormValue("description")),
 		City:        strings.TrimSpace(r.FormValue("city")),
 		Scope:       scope,

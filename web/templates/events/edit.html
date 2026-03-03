@@ -10,7 +10,7 @@
   <a href="/events/{{$e.ID}}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
 </div>
 
-<form method="POST" action="/events/{{$e.ID}}" x-data="eventForm('{{$e.Scope}}', '{{$e.VenueType}}', {{json $e.SupportRequests | printf `%s`}})" class="space-y-8">
+<form method="POST" action="/events/{{$e.ID}}" enctype="multipart/form-data" x-data="eventForm('{{$e.Scope}}', '{{$e.VenueType}}', {{json $e.SupportRequests | printf `%s`}})" class="space-y-8">
 
   {{/* ── Section 1: Basic Info ─────────────────────────────── */}}
   <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
@@ -134,6 +134,31 @@
       <label class="block text-sm font-medium text-gray-700 mb-1">Recurrence End Date <span class="text-gray-400">(optional — for recurring events)</span></label>
       <input name="recurrence_end_date" type="date" {{if $e.RecurrenceEndDate}}value="{{$e.RecurrenceEndDate}}"{{end}}
              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Start Time <span class="text-gray-400">(optional)</span></label>
+        <input name="start_time" type="time" {{if $e.StartTime}}value="{{$e.StartTime}}"{{end}}
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">End Time <span class="text-gray-400">(optional)</span></label>
+        <input name="end_time" type="time" {{if $e.EndTime}}value="{{$e.EndTime}}"{{end}}
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Event Image <span class="text-gray-400">(optional — JPG, PNG, GIF, WebP · max 8 MB)</span></label>
+      {{if $e.ImagePath}}
+      <div class="mb-2 flex items-center gap-3">
+        <img src="/uploads/{{$e.ImagePath}}" alt="Current event image" class="h-20 w-20 object-cover rounded-lg border border-gray-200">
+        <p class="text-xs text-gray-500">Upload a new file below to replace the current image.</p>
+      </div>
+      {{end}}
+      <input name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp"
+             class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
     </div>
   </section>
 
