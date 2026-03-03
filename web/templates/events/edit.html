@@ -2,15 +2,28 @@
 
 {{define "content"}}
 {{$e := .Data}}
+{{$isAdmin := .CurrentUser.IsAdmin}}
 <div class="mb-6 flex items-center justify-between">
   <div>
     <h1 class="text-2xl font-bold text-gray-900">Edit Event</h1>
+    {{if $isAdmin}}
+    <p class="text-gray-500 text-sm mt-1">Admin edit — status and approval are preserved.</p>
+    {{else}}
     <p class="text-gray-500 text-sm mt-1">Editing will reset status to Pending for re-review.</p>
+    {{end}}
   </div>
+  {{if $isAdmin}}
+  <a href="/admin/events/{{$e.ID}}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
+  {{else}}
   <a href="/events/{{$e.ID}}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
+  {{end}}
 </div>
 
+{{if $isAdmin}}
+<form method="POST" action="/admin/events/{{$e.ID}}/edit" enctype="multipart/form-data" x-data="eventForm('{{$e.Scope}}', '{{$e.VenueType}}', {{json $e.SupportRequests | printf `%s`}})" class="space-y-8">
+{{else}}
 <form method="POST" action="/events/{{$e.ID}}" enctype="multipart/form-data" x-data="eventForm('{{$e.Scope}}', '{{$e.VenueType}}', {{json $e.SupportRequests | printf `%s`}})" class="space-y-8">
+{{end}}
 
   {{/* ── Section 1: Basic Info ─────────────────────────────── */}}
   <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">

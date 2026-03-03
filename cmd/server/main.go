@@ -70,7 +70,7 @@ func main() {
 	authHandler       := handlers.NewAuthHandler(sessionSvc, userRepo, inviteRepo, googleAuth, cfg.AdminEmail)
 	dashboardHandler  := handlers.NewDashboardHandler(eventRepo, userRepo)
 	eventHandler      := handlers.NewEventHandler(eventRepo, cfg.UploadDir)
-	adminEventHandler := handlers.NewAdminEventHandler(eventRepo)
+	adminEventHandler := handlers.NewAdminEventHandler(eventRepo, cfg.UploadDir)
 	adminUserHandler  := handlers.NewAdminUserHandler(userRepo)
 	adminInviteHandler := handlers.NewAdminInviteHandler(inviteRepo, baseURL)
 
@@ -129,6 +129,9 @@ func main() {
 			r.Get("/admin/events/import",                 adminEventHandler.ImportPage)
 			r.Post("/admin/events/import",                adminEventHandler.ImportCSV)
 			r.Get("/admin/events/{id}",                   adminEventHandler.Show)
+			r.Get("/admin/events/{id}/edit",              adminEventHandler.AdminEdit)
+			r.Post("/admin/events/{id}/edit",             adminEventHandler.AdminUpdate)
+			r.Post("/admin/events/{id}/delete",           adminEventHandler.AdminDelete)
 			r.Get("/admin/events/{id}/review-form",       adminEventHandler.ReviewForm)
 			r.Post("/admin/events/{id}/approve",          adminEventHandler.Approve)
 			r.Post("/admin/events/{id}/reject",           adminEventHandler.Reject)

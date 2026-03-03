@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -51,13 +53,21 @@ type CalMonth struct {
 	Cells       []CalDayCell
 }
 
+// CalQuarterGroup holds the 3 month cards for a quarter plus any undated
+// (non-recurring, no event_date) events for that quarter shown in a spanning bar.
+type CalQuarterGroup struct {
+	QuarterLabel  string          // "Q1", "Q2", "Q3", "Q4"
+	Months        []CalMonth      // exactly 3 months
+	UndatedEvents []*models.Event // one-time events with no specific date
+}
+
 // CalPageData is passed to calendar.html.
 type CalPageData struct {
-	Year        int
-	PrevYear    int
-	NextYear    int
-	Months      []CalMonth
-	Unscheduled []*models.Event
+	Year          int
+	PrevYear      int
+	NextYear      int
+	QuarterGroups []CalQuarterGroup
+	Unscheduled   []*models.Event
 }
 
 // quarterStartMonth maps a quarter tag to its first calendar month.
@@ -131,8 +141,10 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 
 	// byDate: only events with a specific event_date → for grid highlighting
 	byDate := map[dayKey][]*models.Event{}
-	// monthEventsList: all events active in each month → for the event list below the grid
+	// monthEventsList: events with known months (dated or recurring) → listed below each month grid
 	monthEventsList := map[int][]CalEvent{}
+	// undatedByQuarter: one-time events with no event_date → shown in the spanning quarter bar
+	undatedByQuarter := map[string][]*models.Event{}
 	var unscheduled []*models.Event
 
 	for _, e := range events {
@@ -149,10 +161,20 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 			}
 		}
 
-		// Determine which months this event appears in the list
+		// One-time events with no specific date → quarter bar (or unscheduled)
+		if e.EventDate == "" && (e.Recurrence == "" || e.Recurrence == models.RecurrenceNone) {
+			_, hasQ := quarterStartMonth[e.Quarter]
+			if hasQ {
+				undatedByQuarter[e.Quarter] = append(undatedByQuarter[e.Quarter], e)
+			} else {
+				unscheduled = append(unscheduled, e)
+			}
+			continue
+		}
+
+		// Recurring events and dated events → determine active months
 		months := eventMonthsForYear(e, year)
 		if len(months) == 0 {
-			// No quarter and no usable date: show in unscheduled
 			_, hasQ := quarterStartMonth[e.Quarter]
 			if !hasQ {
 				unscheduled = append(unscheduled, e)
@@ -173,7 +195,8 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 		}
 	}
 
-	months := make([]CalMonth, 12)
+	// Build all 12 month structs
+	allMonths := make([]CalMonth, 12)
 	for m := 1; m <= 12; m++ {
 		firstDay := time.Date(year, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
 		daysInMonth := time.Date(year, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()
@@ -190,7 +213,7 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 			cells = append(cells, CalDayCell{})
 		}
 
-		months[m-1] = CalMonth{
+		allMonths[m-1] = CalMonth{
 			Name:        monthNames[m-1],
 			Month:       m,
 			MonthEvents: monthEventsList[m],
@@ -198,12 +221,35 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 		}
 	}
 
+	// Group months into quarters
+	quarterDefs := []struct {
+		label  string
+		months [3]int
+	}{
+		{"Q1", [3]int{1, 2, 3}},
+		{"Q2", [3]int{4, 5, 6}},
+		{"Q3", [3]int{7, 8, 9}},
+		{"Q4", [3]int{10, 11, 12}},
+	}
+	quarterGroups := make([]CalQuarterGroup, 4)
+	for i, qd := range quarterDefs {
+		quarterGroups[i] = CalQuarterGroup{
+			QuarterLabel: qd.label,
+			Months: []CalMonth{
+				allMonths[qd.months[0]-1],
+				allMonths[qd.months[1]-1],
+				allMonths[qd.months[2]-1],
+			},
+			UndatedEvents: undatedByQuarter[qd.label],
+		}
+	}
+
 	return CalPageData{
-		Year:        year,
-		PrevYear:    year - 1,
-		NextYear:    year + 1,
-		Months:      months,
-		Unscheduled: unscheduled,
+		Year:          year,
+		PrevYear:      year - 1,
+		NextYear:      year + 1,
+		QuarterGroups: quarterGroups,
+		Unscheduled:   unscheduled,
 	}
 }
 
@@ -211,10 +257,41 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 
 type AdminEventHandler struct {
 	eventRepo *db.EventRepository
+	uploadDir string
 }
 
-func NewAdminEventHandler(eventRepo *db.EventRepository) *AdminEventHandler {
-	return &AdminEventHandler{eventRepo: eventRepo}
+func NewAdminEventHandler(eventRepo *db.EventRepository, uploadDir string) *AdminEventHandler {
+	return &AdminEventHandler{eventRepo: eventRepo, uploadDir: uploadDir}
+}
+
+// adminSaveImage is the same image-upload helper as EventHandler.saveImage but for admin handlers.
+func (h *AdminEventHandler) adminSaveImage(r *http.Request, keepExisting string) (string, error) {
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		return keepExisting, nil
+	}
+	defer file.Close()
+
+	if header.Size > 8<<20 {
+		return "", fmt.Errorf("image must be under 8 MB")
+	}
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp":
+	default:
+		return "", fmt.Errorf("unsupported image type; use JPG, PNG, GIF, or WebP")
+	}
+
+	filename := randomHex(16) + ext
+	dst, err := os.Create(filepath.Join(h.uploadDir, filename))
+	if err != nil {
+		return "", fmt.Errorf("could not save image")
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, file); err != nil {
+		return "", fmt.Errorf("could not save image")
+	}
+	return filename, nil
 }
 
 type adminEventListData struct {
@@ -243,6 +320,84 @@ func (h *AdminEventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render(w, r, "web/templates/events/show.html", e)
+}
+
+// AdminEdit renders the event edit form for admins (no status restriction).
+func (h *AdminEventHandler) AdminEdit(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	render(w, r, "web/templates/events/edit.html", e)
+}
+
+// AdminUpdate saves admin edits to an event, preserving its current status.
+func (h *AdminEventHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	updated := parseEventForm(r)
+	updated.ID = id
+	updated.UserID = e.UserID // preserve original submitter
+
+	imagePath, err := h.adminSaveImage(r, e.ImagePath)
+	if err != nil {
+		setFlash(w, "error", err.Error())
+		http.Redirect(w, r, "/admin/events/"+id+"/edit", http.StatusSeeOther)
+		return
+	}
+	updated.ImagePath = imagePath
+
+	if strings.TrimSpace(updated.Name) == "" || strings.TrimSpace(updated.Description) == "" {
+		setFlash(w, "error", "Event name and description are required.")
+		http.Redirect(w, r, "/admin/events/"+id+"/edit", http.StatusSeeOther)
+		return
+	}
+	if updated.Quarter == "" {
+		setFlash(w, "error", "Quarter is required.")
+		http.Redirect(w, r, "/admin/events/"+id+"/edit", http.StatusSeeOther)
+		return
+	}
+	if updated.Year == 0 {
+		setFlash(w, "error", "Year is required.")
+		http.Redirect(w, r, "/admin/events/"+id+"/edit", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.eventRepo.AdminUpdate(updated); err != nil {
+		setFlash(w, "error", "Failed to update event. Please try again.")
+		http.Redirect(w, r, "/admin/events/"+id+"/edit", http.StatusSeeOther)
+		return
+	}
+
+	setFlash(w, "success", "Event updated.")
+	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+}
+
+// AdminDelete permanently deletes an event and all its sub-records.
+func (h *AdminEventHandler) AdminDelete(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	if err := h.eventRepo.Delete(id); err != nil {
+		setFlash(w, "error", "Failed to delete event.")
+		http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+		return
+	}
+
+	setFlash(w, "success", "Event deleted.")
+	http.Redirect(w, r, "/admin/events", http.StatusSeeOther)
 }
 
 // ReviewForm returns the approve/reject partial for HTMX loading.

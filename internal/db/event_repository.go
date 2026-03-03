@@ -169,6 +169,104 @@ func (r *EventRepository) Update(e *models.Event) error {
 	return tx.Commit()
 }
 
+// AdminUpdate replaces all fields of an existing event while preserving its current status.
+func (r *EventRepository) AdminUpdate(e *models.Event) error {
+	e.UpdatedAt = time.Now()
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		UPDATE events SET name=?, quarter=?, year=?, description=?, recurrence=?, recurrence_end_date=?,
+		                  start_time=?, end_time=?, image_path=?,
+		                  city=?, scope=?, scope_jamatkhana=?, venue_type=?, venue_jamatkhana=?, venue_address=?,
+		                  outcome=?, impact=?, updated_at=datetime('now')
+		WHERE id=?`,
+		e.Name, nullIfEmpty(e.Quarter), nullIfZero(e.Year),
+		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
+		nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
+		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
+		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
+		e.Outcome, e.Impact, e.ID,
+	); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE event_inputs SET financial_resources=?, facilities=?, human_support=?, technology=?, partnerships=?
+		WHERE event_id=?`,
+		e.Input.FinancialResources, e.Input.Facilities, e.Input.HumanSupport,
+		e.Input.Technology, e.Input.Partnerships, e.ID,
+	); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE event_activities SET structured_programming=?, engagement_design=?, content_delivery=?, community_building=?
+		WHERE event_id=?`,
+		e.Activities.StructuredProgramming, e.Activities.EngagementDesign,
+		e.Activities.ContentDelivery, e.Activities.CommunityBuilding, e.ID,
+	); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DELETE FROM event_output_items WHERE event_id=?`, e.ID); err != nil {
+		return err
+	}
+	for i, oi := range e.OutputItems {
+		if _, err := tx.Exec(`
+			INSERT INTO event_output_items (id, event_id, description, sort_order)
+			VALUES (?, ?, ?, ?)`,
+			uuid.New().String(), e.ID, oi.Description, i,
+		); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(`DELETE FROM event_support_requests WHERE event_id=?`, e.ID); err != nil {
+		return err
+	}
+	for i, sr := range e.SupportRequests {
+		if _, err := tx.Exec(`
+			INSERT INTO event_support_requests (id, event_id, type, description, venue_type, venue_detail, sort_order)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			uuid.New().String(), e.ID, sr.Type, sr.Description,
+			nullIfEmpty(sr.VenueType), nullIfEmpty(sr.VenueDetail), i,
+		); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// Delete removes an event and all its sub-records in a single transaction.
+func (r *EventRepository) Delete(id string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, table := range []string{
+		"event_support_requests",
+		"event_output_items",
+		"event_activities",
+		"event_inputs",
+	} {
+		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE event_id=?`, id); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(`DELETE FROM events WHERE id=?`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // GetByID fetches a full event with all sub-records.
 func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	e := &models.Event{}
