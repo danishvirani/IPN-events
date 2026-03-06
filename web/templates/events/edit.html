@@ -1,13 +1,16 @@
 {{define "title"}}Edit Event{{end}}
 
 {{define "content"}}
-{{$e := .Data}}
+{{$e := .Data.Event}}
+{{$initiatives := .Data.Initiatives}}
 {{$isAdmin := .CurrentUser.IsAdmin}}
 <div class="mb-6 flex items-center justify-between">
   <div>
     <h1 class="text-2xl font-bold text-gray-900">Edit Event</h1>
     {{if $isAdmin}}
     <p class="text-gray-500 text-sm mt-1">Admin edit — status and approval are preserved.</p>
+    {{else if eq $e.Status "rejected"}}
+    <p class="text-red-600 text-sm mt-1 font-medium">Make your changes and resubmit for review. You can add a note explaining what changed.</p>
     {{else}}
     <p class="text-gray-500 text-sm mt-1">Editing will reset status to Pending for re-review.</p>
     {{end}}
@@ -143,10 +146,17 @@
       </select>
     </div>
 
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Recurrence End Date <span class="text-gray-400">(optional — for recurring events)</span></label>
-      <input name="recurrence_end_date" type="date" {{if $e.RecurrenceEndDate}}value="{{$e.RecurrenceEndDate}}"{{end}}
-             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Start Date <span class="text-gray-400">(optional)</span></label>
+        <input name="event_date" type="date" {{if $e.EventDate}}value="{{$e.EventDate}}"{{end}}
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Recurrence End Date <span class="text-gray-400">(optional)</span></label>
+        <input name="recurrence_end_date" type="date" {{if $e.RecurrenceEndDate}}value="{{$e.RecurrenceEndDate}}"{{end}}
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
@@ -174,6 +184,32 @@
              class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
     </div>
   </section>
+
+  {{/* ── Strategic Initiatives ──────────────────────────────── */}}
+  {{if $initiatives}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      Strategic Initiatives
+    </h2>
+    <p class="text-sm text-gray-500">Select the initiatives this event supports.</p>
+    <div class="grid sm:grid-cols-2 gap-2 mt-1">
+      {{range $initiatives}}
+      <label class="flex items-start gap-2.5 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-purple-50 hover:border-purple-300 transition-colors">
+        <input type="checkbox" name="initiative_ids" value="{{.ID}}"
+               {{if hasInitiative $e.Initiatives .ID}}checked{{end}}
+               class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+        <div>
+          <span class="text-sm font-medium text-gray-900">{{.Name}}</span>
+          {{if .Objective}}
+          <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{.Objective}}</p>
+          {{end}}
+        </div>
+      </label>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
 
   {{/* ── Section 2: Input ─────────────────────────────────── */}}
   <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
@@ -325,9 +361,27 @@
     </button>
   </section>
 
+  {{/* Resubmit note — only shown for rejected events being resubmitted */}}
+  {{if and (not $isAdmin) (eq $e.Status "rejected")}}
+  <section class="bg-yellow-50 rounded-xl border border-yellow-200 shadow-sm p-6 space-y-3">
+    <h2 class="text-sm font-semibold text-yellow-800">Resubmit Note (optional)</h2>
+    <p class="text-xs text-yellow-700">Describe what you changed in response to the feedback.</p>
+    <textarea name="resubmit_note" rows="3" placeholder="e.g. Updated the budget section and added venue details..."
+              class="w-full rounded-lg border border-yellow-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
+  </section>
+  {{end}}
+
   <div class="flex justify-end gap-3 pb-4">
+    {{if $isAdmin}}
+    <a href="/admin/events/{{$e.ID}}" class="px-5 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</a>
+    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Changes</button>
+    {{else if eq $e.Status "rejected"}}
+    <a href="/events/{{$e.ID}}" class="px-5 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</a>
+    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg">Resubmit for Review</button>
+    {{else}}
     <a href="/events/{{$e.ID}}" class="px-5 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</a>
     <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save &amp; Resubmit</button>
+    {{end}}
   </div>
 </form>
 

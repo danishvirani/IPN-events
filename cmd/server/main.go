@@ -15,6 +15,7 @@ import (
 	"ipn-events/internal/auth"
 	"ipn-events/internal/config"
 	"ipn-events/internal/db"
+	"ipn-events/internal/email"
 	"ipn-events/web/handlers"
 	webmw "ipn-events/web/middleware"
 )
@@ -34,11 +35,28 @@ func main() {
 	db.SeedAdmin(sqlDB, cfg.AdminEmail, cfg.AdminPassword)
 
 	// Repositories and services
-	userRepo    := db.NewUserRepository(sqlDB)
-	eventRepo   := db.NewEventRepository(sqlDB)
-	sessionRepo := db.NewSessionRepository(sqlDB)
-	inviteRepo  := db.NewInviteRepository(sqlDB)
-	sessionSvc  := auth.NewSessionService(sessionRepo, cfg.SessionDuration)
+	userRepo       := db.NewUserRepository(sqlDB)
+	eventRepo      := db.NewEventRepository(sqlDB)
+	sessionRepo    := db.NewSessionRepository(sqlDB)
+	resetRepo      := db.NewPasswordResetRepository(sqlDB)
+	inviteRepo     := db.NewInviteRepository(sqlDB)
+	commentRepo    := db.NewCommentRepository(sqlDB)
+	initiativeRepo := db.NewInitiativeRepository(sqlDB)
+	sessionSvc     := auth.NewSessionService(sessionRepo, cfg.SessionDuration)
+
+	// Base URL (for generating reset links)
+	baseURL := cfg.GoogleCallbackURL
+	if len(baseURL) > len("/auth/callback") {
+		baseURL = baseURL[:len(baseURL)-len("/auth/callback")]
+	}
+
+	// Email service (Resend)
+	emailSvc := email.NewService(cfg.ResendAPIKey, cfg.FromEmail, baseURL)
+	if emailSvc.Enabled() {
+		log.Printf("email: Resend configured, sending from %s", cfg.FromEmail)
+	} else {
+		log.Println("email: RESEND_API_KEY not set — reset links will appear in flash messages")
+	}
 
 	// Google OAuth
 	googleAuth := auth.NewGoogleAuth(
@@ -59,20 +77,19 @@ func main() {
 		}
 	}()
 
-	// Base URL for invite links
-	baseURL := cfg.GoogleCallbackURL
-	// Strip "/auth/callback" to get the base URL
-	if len(baseURL) > len("/auth/callback") {
-		baseURL = baseURL[:len(baseURL)-len("/auth/callback")]
-	}
-
 	// Handlers
-	authHandler       := handlers.NewAuthHandler(sessionSvc, userRepo, inviteRepo, googleAuth, cfg.AdminEmail)
-	dashboardHandler  := handlers.NewDashboardHandler(eventRepo, userRepo)
-	eventHandler      := handlers.NewEventHandler(eventRepo, cfg.UploadDir)
-	adminEventHandler := handlers.NewAdminEventHandler(eventRepo, cfg.UploadDir)
-	adminUserHandler  := handlers.NewAdminUserHandler(userRepo)
-	adminInviteHandler := handlers.NewAdminInviteHandler(inviteRepo, baseURL)
+	authHandler            := handlers.NewAuthHandler(sessionSvc, userRepo, resetRepo, inviteRepo, googleAuth, cfg.AdminEmail)
+	dashboardHandler       := handlers.NewDashboardHandler(eventRepo, userRepo)
+	budgetRepo             := db.NewBudgetRepository(sqlDB)
+	checklistRepo          := db.NewChecklistRepository(sqlDB)
+	eventHandler           := handlers.NewEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, cfg.UploadDir)
+	adminEventHandler      := handlers.NewAdminEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, emailSvc, cfg.UploadDir)
+	budgetHandler          := handlers.NewBudgetHandler(eventRepo, budgetRepo)
+	checklistHandler       := handlers.NewChecklistHandler(eventRepo, checklistRepo)
+	guideHandler           := handlers.NewGuideHandler()
+	inviteHandler          := handlers.NewInviteHandler(inviteRepo, userRepo, sessionSvc, googleAuth)
+	adminUserHandler       := handlers.NewAdminUserHandler(userRepo, inviteRepo, resetRepo, baseURL, emailSvc)
+	adminInitiativeHandler := handlers.NewAdminInitiativeHandler(initiativeRepo, cfg.UploadDir)
 
 	// Router
 	r := chi.NewRouter()
@@ -94,10 +111,17 @@ func main() {
 	r.Get("/auth/google",   authHandler.Initiate)
 	r.Get("/auth/callback", authHandler.Callback)
 
-	// Invite flow (public)
-	r.Get("/invite/{token}",          authHandler.ShowInvite)
-	r.Get("/invite/{token}/google",   authHandler.InviteInitiate)
-	r.Post("/invite/{token}/password", authHandler.InviteSetPassword)
+	// Password reset (public — user clicks link from email)
+	r.Get("/reset-password/{token}",  authHandler.ShowResetPassword)
+	r.Post("/reset-password/{token}", authHandler.DoResetPassword)
+
+	// Invite acceptance (public — user clicks link from email)
+	r.Get("/invite/{token}",          inviteHandler.ShowAccept)
+	r.Get("/invite/{token}/google",   inviteHandler.AcceptWithGoogle)
+	r.Post("/invite/{token}/password", inviteHandler.AcceptWithPassword)
+
+	// Getting-started guides (public — linked from welcome email)
+	r.Get("/guide/{role}", guideHandler.Show)
 
 	// Protected
 	r.Group(func(r chi.Router) {
@@ -113,22 +137,30 @@ func main() {
 		r.Get("/events/{id}",      eventHandler.Show)
 		r.Get("/events/{id}/edit", eventHandler.Edit)
 		r.Post("/events/{id}",     eventHandler.Update)
+		r.Post("/events/{id}/comments", eventHandler.AddComment)
 
-		// Admin routes
+		// Admin + Viewer shared routes (read-only access to events)
+		r.Group(func(r chi.Router) {
+			r.Use(webmw.RequireAdminOrViewer)
+
+			r.Get("/admin/calendar",           adminEventHandler.Calendar)
+			r.Get("/admin/roadmap",            adminEventHandler.Roadmap)
+			r.Get("/admin/roadmap/pdf",        adminEventHandler.RoadmapPDF)
+			r.Get("/admin/events/export-csv",  adminEventHandler.ExportCSV)
+			r.Get("/admin/events",             adminEventHandler.List)
+			r.Get("/admin/events/{id}",        adminEventHandler.Show)
+			r.Get("/admin/budget",             budgetHandler.YearlyOverview)
+		})
+
+		// Admin-only routes (write operations)
 		r.Group(func(r chi.Router) {
 			r.Use(webmw.RequireAdmin)
 
 			r.Get("/admin/dashboard", dashboardHandler.AdminDashboard)
 
-			r.Get("/admin/calendar",      adminEventHandler.Calendar)
-			r.Get("/admin/roadmap",       adminEventHandler.Roadmap)
-			r.Get("/admin/roadmap/pdf",   adminEventHandler.RoadmapPDF)
-
-			r.Get("/admin/events",                        adminEventHandler.List)
 			r.Get("/admin/events/csv-template",           adminEventHandler.DownloadTemplate)
 			r.Get("/admin/events/import",                 adminEventHandler.ImportPage)
 			r.Post("/admin/events/import",                adminEventHandler.ImportCSV)
-			r.Get("/admin/events/{id}",                   adminEventHandler.Show)
 			r.Get("/admin/events/{id}/edit",              adminEventHandler.AdminEdit)
 			r.Post("/admin/events/{id}/edit",             adminEventHandler.AdminUpdate)
 			r.Post("/admin/events/{id}/delete",           adminEventHandler.AdminDelete)
@@ -136,13 +168,33 @@ func main() {
 			r.Post("/admin/events/{id}/approve",          adminEventHandler.Approve)
 			r.Post("/admin/events/{id}/reject",           adminEventHandler.Reject)
 			r.Post("/admin/events/{id}/set-date",         adminEventHandler.SetDate)
+			r.Post("/admin/events/{id}/comments",         adminEventHandler.AddComment)
+			r.Post("/admin/events/{id}/budget",                    budgetHandler.AddItem)
+			r.Post("/admin/events/{id}/budget/{itemId}/delete",    budgetHandler.DeleteItem)
+			r.Post("/admin/events/{id}/checklist/toggle",          checklistHandler.ToggleItem)
+			r.Post("/admin/events/{id}/checklist/add",             checklistHandler.AddItem)
+			r.Post("/admin/events/{id}/checklist/remove",          checklistHandler.RemoveItem)
 
-			r.Get("/admin/users",      adminUserHandler.List)
-			r.Get("/admin/users/new",  adminUserHandler.New)
-			r.Post("/admin/users",     adminUserHandler.Create)
+			// Strategic Initiatives
+			r.Get("/admin/initiatives",                       adminInitiativeHandler.List)
+			r.Get("/admin/initiatives/new",                   adminInitiativeHandler.NewForm)
+			r.Post("/admin/initiatives",                      adminInitiativeHandler.Create)
+			r.Get("/admin/initiatives/{id}",                  adminInitiativeHandler.Show)
+			r.Get("/admin/initiatives/{id}/edit",             adminInitiativeHandler.EditForm)
+			r.Post("/admin/initiatives/{id}",                 adminInitiativeHandler.Update)
+			r.Post("/admin/initiatives/{id}/delete",          adminInitiativeHandler.Delete)
+			r.Post("/admin/initiatives/{id}/documents",       adminInitiativeHandler.UploadDocument)
+			r.Post("/admin/initiatives/{id}/documents/{docId}/delete", adminInitiativeHandler.DeleteDocument)
 
-			r.Get("/admin/invites",  adminInviteHandler.List)
-			r.Post("/admin/invites", adminInviteHandler.Create)
+			r.Get("/admin/users",                          adminUserHandler.List)
+			r.Get("/admin/users/new",                      adminUserHandler.NewUserForm)
+			r.Post("/admin/users/invite",                  adminUserHandler.CreateInvite)
+			r.Post("/admin/users/{id}/role",               adminUserHandler.UpdateRole)
+			r.Post("/admin/users/invite/{id}/delete",      adminUserHandler.DeleteInvite)
+			r.Post("/admin/users/{id}/delete",             adminUserHandler.DeleteUser)
+			r.Get("/admin/users/{id}/reset-password",      adminUserHandler.ResetPasswordForm)
+			r.Post("/admin/users/{id}/reset-password",     adminUserHandler.ResetPassword)
+			r.Post("/admin/users/{id}/send-reset",         adminUserHandler.GenerateResetLink)
 		})
 	})
 

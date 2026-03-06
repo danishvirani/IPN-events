@@ -1,0 +1,82 @@
+{{define "title"}}{{.Data.Name}}{{end}}
+
+{{define "content"}}
+{{$init := .Data}}
+
+<div class="mb-6 flex items-center justify-between flex-wrap gap-3">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">{{$init.Name}}</h1>
+    <p class="text-gray-500 text-sm mt-1">Strategic Initiative</p>
+  </div>
+  <div class="flex gap-2 items-center">
+    <a href="/admin/initiatives" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">&larr; All Initiatives</a>
+    <a href="/admin/initiatives/{{$init.ID}}/edit"
+       class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+      Edit
+    </a>
+    <form method="POST" action="/admin/initiatives/{{$init.ID}}/delete"
+          onsubmit="return confirm('Delete this initiative? It will be unlinked from all events.')">
+      <button type="submit"
+              class="text-sm bg-red-50 border border-red-300 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-100">
+        Delete
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="space-y-6">
+
+  {{/* Objective */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <h2 class="text-base font-semibold text-gray-700 mb-2">Objective</h2>
+    <p class="text-sm text-gray-700 whitespace-pre-wrap">{{$init.Objective}}</p>
+    <p class="text-xs text-gray-400 mt-4">Created {{$init.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}} &middot; Updated {{$init.UpdatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</p>
+  </section>
+
+  {{/* Documents */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-700">Supporting Documents</h2>
+      <span class="text-xs text-gray-400">{{len $init.Documents}} file{{if ne (len $init.Documents) 1}}s{{end}}</span>
+    </div>
+
+    {{if $init.Documents}}
+    <div class="space-y-2 mb-4">
+      {{range $init.Documents}}
+      <div class="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+        <div class="flex items-center gap-3 min-w-0">
+          <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <div class="min-w-0">
+            <a href="/uploads/{{.Filename}}" target="_blank" class="text-sm font-medium text-blue-700 hover:text-blue-900 truncate block">{{.OriginalName}}</a>
+            <p class="text-xs text-gray-400">Uploaded {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+          </div>
+        </div>
+        <form method="POST" action="/admin/initiatives/{{$init.ID}}/documents/{{.ID}}/delete"
+              onsubmit="return confirm('Delete this document?')">
+          <button type="submit" class="text-xs text-red-500 hover:text-red-700 hover:underline">Remove</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="text-sm text-gray-400 italic mb-4">No documents uploaded yet.</p>
+    {{end}}
+
+    {{/* Upload form */}}
+    <form method="POST" action="/admin/initiatives/{{$init.ID}}/documents" enctype="multipart/form-data"
+          class="border-t border-gray-100 pt-4">
+      <label class="block text-sm font-medium text-gray-600 mb-2">Upload Documents</label>
+      <div class="flex gap-3 items-end">
+        <input type="file" name="documents" multiple
+               class="flex-1 text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+        <button type="submit"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors">
+          Upload
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Max 32 MB per file. Any file type accepted.</p>
+    </form>
+  </section>
+
+</div>
+{{end}}

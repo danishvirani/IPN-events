@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -76,6 +78,7 @@ func templateFuncs() template.FuncMap {
 			}
 			return template.JS(b), nil
 		},
+		"add": func(a, b int) int { return a + b },
 		"dict": func(values ...any) map[string]any {
 			m := make(map[string]any)
 			for i := 0; i+1 < len(values); i += 2 {
@@ -85,6 +88,41 @@ func templateFuncs() template.FuncMap {
 			}
 			return m
 		},
+		"hasInitiative": func(initiatives []models.Initiative, id string) bool {
+			for _, init := range initiatives {
+				if init.ID == id {
+					return true
+				}
+			}
+			return false
+		},
+		"formatMoney": func(cents int) string {
+			negative := cents < 0
+			if negative {
+				cents = -cents
+			}
+			dollars := cents / 100
+			remainder := cents % 100
+			// Add comma separators
+			s := fmt.Sprintf("%d", dollars)
+			if len(s) > 3 {
+				var parts []string
+				for len(s) > 3 {
+					parts = append([]string{s[len(s)-3:]}, parts...)
+					s = s[:len(s)-3]
+				}
+				parts = append([]string{s}, parts...)
+				s = strings.Join(parts, ",")
+			}
+			if negative {
+				return fmt.Sprintf("-$%s.%02d", s, remainder)
+			}
+			return fmt.Sprintf("$%s.%02d", s, remainder)
+		},
+		"sub": func(a, b int) int { return a - b },
+		"dollarsToCents": func(d float64) int { return int(math.Round(d * 100)) },
+		"incomeCategories":  models.IncomeCategories,
+		"expenseCategories": models.ExpenseCategories,
 	}
 }
 

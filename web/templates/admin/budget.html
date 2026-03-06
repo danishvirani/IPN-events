@@ -1,0 +1,93 @@
+{{define "title"}}Budget Overview — {{.Data.Year}}{{end}}
+
+{{define "content"}}
+{{$d := .Data}}
+<div class="mb-6 flex items-center justify-between flex-wrap gap-3">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Budget Overview</h1>
+    <p class="text-sm text-gray-500 mt-1">Approved events for {{$d.Year}}</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="/admin/budget?year={{sub $d.Year 1}}"
+       class="px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+      &larr; {{sub $d.Year 1}}
+    </a>
+    <span class="px-4 py-1.5 text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg">
+      {{$d.Year}}
+    </span>
+    <a href="/admin/budget?year={{add $d.Year 1}}"
+       class="px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+      {{add $d.Year 1}} &rarr;
+    </a>
+  </div>
+</div>
+
+{{/* Summary Cards */}}
+<div class="grid sm:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Income</p>
+    <p class="text-2xl font-bold text-green-600">{{formatMoney $d.TotalIncome}}</p>
+    <p class="text-xs text-gray-400 mt-1">{{$d.EventCount}} approved events</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Expenses</p>
+    <p class="text-2xl font-bold text-red-600">{{formatMoney $d.TotalExpense}}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Net Balance</p>
+    <p class="text-2xl font-bold {{if ge $d.Balance 0}}text-green-600{{else}}text-red-600{{end}}">
+      {{if ge $d.Balance 0}}+{{end}}{{formatMoney $d.Balance}}
+    </p>
+    <p class="text-xs mt-1 {{if ge $d.Balance 0}}text-green-500{{else}}text-red-500{{end}}">
+      {{if ge $d.Balance 0}}Surplus{{else}}Deficit{{end}}
+    </p>
+  </div>
+</div>
+
+{{/* Events Table */}}
+{{if $d.Rows}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Event</th>
+        <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Quarter</th>
+        <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Income</th>
+        <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expenses</th>
+        <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Balance</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {{range $d.Rows}}
+      <tr class="hover:bg-gray-50">
+        <td class="px-4 py-3">
+          <a href="/admin/events/{{.EventID}}" class="font-medium text-indigo-600 hover:text-indigo-800">{{.EventName}}</a>
+        </td>
+        <td class="px-4 py-3 text-center text-gray-500">{{if .Quarter}}{{.Quarter}}{{else}}—{{end}}</td>
+        <td class="px-4 py-3 text-right text-green-700 font-medium">{{formatMoney .TotalIncome}}</td>
+        <td class="px-4 py-3 text-right text-red-700 font-medium">{{formatMoney .TotalExpense}}</td>
+        <td class="px-4 py-3 text-right font-bold {{if ge .Balance 0}}text-green-700{{else}}text-red-700{{end}}">
+          {{if gt .Balance 0}}+{{end}}{{formatMoney .Balance}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+    <tfoot class="bg-gray-50 border-t-2 border-gray-300">
+      <tr class="font-bold">
+        <td class="px-4 py-3 text-gray-700">Total ({{$d.EventCount}} events)</td>
+        <td></td>
+        <td class="px-4 py-3 text-right text-green-700">{{formatMoney $d.TotalIncome}}</td>
+        <td class="px-4 py-3 text-right text-red-700">{{formatMoney $d.TotalExpense}}</td>
+        <td class="px-4 py-3 text-right {{if ge $d.Balance 0}}text-green-700{{else}}text-red-700{{end}}">
+          {{if gt $d.Balance 0}}+{{end}}{{formatMoney $d.Balance}}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{{else}}
+<div class="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+  <p class="text-gray-500 text-sm">No approved events with budgets for {{$d.Year}}.</p>
+</div>
+{{end}}
+{{end}}

@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,14 +34,14 @@ func (r *EventRepository) Create(e *models.Event) error {
 
 	if _, err := tx.Exec(`
 		INSERT INTO events (id, user_id, name, quarter, year, description, recurrence, recurrence_end_date,
-		                    start_time, end_time, image_path,
+		                    event_date, start_time, end_time, image_path,
 		                    city, scope, scope_jamatkhana, venue_type, venue_jamatkhana, venue_address,
 		                    outcome, impact, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.ID, e.UserID,
 		nullIfEmpty(e.Name), nullIfEmpty(e.Quarter), nullIfZero(e.Year),
 		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
-		nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
+		nullIfEmpty(e.EventDate), nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 		e.Outcome, e.Impact, e.Status,
@@ -89,6 +90,10 @@ func (r *EventRepository) Create(e *models.Event) error {
 		}
 	}
 
+	if err := setEventInitiativesTx(tx, e.ID, e.InitiativeIDs); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -104,14 +109,14 @@ func (r *EventRepository) Update(e *models.Event) error {
 
 	if _, err := tx.Exec(`
 		UPDATE events SET name=?, quarter=?, year=?, description=?, recurrence=?, recurrence_end_date=?,
-		                  start_time=?, end_time=?, image_path=?,
+		                  event_date=?, start_time=?, end_time=?, image_path=?,
 		                  city=?, scope=?, scope_jamatkhana=?, venue_type=?, venue_jamatkhana=?, venue_address=?,
 		                  outcome=?, impact=?,
 		                  status=?, admin_comment=NULL, updated_at=datetime('now')
 		WHERE id=?`,
 		e.Name, nullIfEmpty(e.Quarter), nullIfZero(e.Year),
 		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
-		nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
+		nullIfEmpty(e.EventDate), nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 		e.Outcome, e.Impact, models.StatusPending, e.ID,
@@ -166,6 +171,10 @@ func (r *EventRepository) Update(e *models.Event) error {
 		}
 	}
 
+	if err := setEventInitiativesTx(tx, e.ID, e.InitiativeIDs); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -181,13 +190,13 @@ func (r *EventRepository) AdminUpdate(e *models.Event) error {
 
 	if _, err := tx.Exec(`
 		UPDATE events SET name=?, quarter=?, year=?, description=?, recurrence=?, recurrence_end_date=?,
-		                  start_time=?, end_time=?, image_path=?,
+		                  event_date=?, start_time=?, end_time=?, image_path=?,
 		                  city=?, scope=?, scope_jamatkhana=?, venue_type=?, venue_jamatkhana=?, venue_address=?,
 		                  outcome=?, impact=?, updated_at=datetime('now')
 		WHERE id=?`,
 		e.Name, nullIfEmpty(e.Quarter), nullIfZero(e.Year),
 		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
-		nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
+		nullIfEmpty(e.EventDate), nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
 		e.Outcome, e.Impact, e.ID,
@@ -240,6 +249,10 @@ func (r *EventRepository) AdminUpdate(e *models.Event) error {
 		}
 	}
 
+	if err := setEventInitiativesTx(tx, e.ID, e.InitiativeIDs); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -252,6 +265,10 @@ func (r *EventRepository) Delete(id string) error {
 	defer tx.Rollback()
 
 	for _, table := range []string{
+		"event_checklist_items",
+		"event_budget_items",
+		"event_initiatives",
+		"event_comments",
 		"event_support_requests",
 		"event_output_items",
 		"event_activities",
@@ -362,6 +379,24 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 		}
 	}
 
+	// Load tagged initiatives
+	initRows, err := r.db.Query(`
+		SELECT si.id, si.name, si.objective, si.created_at, si.updated_at
+		FROM strategic_initiatives si
+		JOIN event_initiatives ei ON si.id = ei.initiative_id
+		WHERE ei.event_id = ?
+		ORDER BY si.name`, e.ID,
+	)
+	if err == nil {
+		defer initRows.Close()
+		for initRows.Next() {
+			var init models.Initiative
+			if err := initRows.Scan(&init.ID, &init.Name, &init.Objective, &init.CreatedAt, &init.UpdatedAt); err == nil {
+				e.Initiatives = append(e.Initiatives, init)
+			}
+		}
+	}
+
 	return e, nil
 }
 
@@ -376,6 +411,49 @@ func (r *EventRepository) ListAll(statusFilter string) ([]*models.Event, error) 
 		return r.listEvents(`WHERE e.status = ? ORDER BY e.created_at DESC`, statusFilter)
 	}
 	return r.listEvents(`ORDER BY e.created_at DESC`)
+}
+
+// EventFilter holds search and filter parameters for the admin event list.
+type EventFilter struct {
+	Status       string
+	Search       string // search by event name (LIKE)
+	InitiativeID string // filter by initiative
+	Quarter      string // e.g. "Q1"
+	Year         int    // e.g. 2025
+}
+
+// ListAllFiltered returns events matching the given filters.
+func (r *EventRepository) ListAllFiltered(f EventFilter) ([]*models.Event, error) {
+	var conditions []string
+	var args []any
+
+	if f.Status != "" {
+		conditions = append(conditions, "e.status = ?")
+		args = append(args, f.Status)
+	}
+	if f.Search != "" {
+		conditions = append(conditions, "e.name LIKE ?")
+		args = append(args, "%"+f.Search+"%")
+	}
+	if f.InitiativeID != "" {
+		conditions = append(conditions, "e.id IN (SELECT event_id FROM event_initiatives WHERE initiative_id = ?)")
+		args = append(args, f.InitiativeID)
+	}
+	if f.Quarter != "" {
+		conditions = append(conditions, "e.quarter = ?")
+		args = append(args, f.Quarter)
+	}
+	if f.Year > 0 {
+		conditions = append(conditions, "e.year = ?")
+		args = append(args, f.Year)
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	return r.listEvents(where+" ORDER BY e.created_at DESC", args...)
 }
 
 // ListForCalendar returns all approved events ordered by year then quarter.
@@ -432,7 +510,53 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 		e.AdminComment = adminComment.String
 		events = append(events, e)
 	}
-	return events, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Load initiatives for all events in a single batch
+	if len(events) > 0 {
+		r.loadInitiativesForEvents(events)
+	}
+
+	return events, nil
+}
+
+// loadInitiativesForEvents populates the Initiatives field for a list of events.
+func (r *EventRepository) loadInitiativesForEvents(events []*models.Event) {
+	// Build event ID index
+	idx := make(map[string]*models.Event, len(events))
+	for _, e := range events {
+		idx[e.ID] = e
+	}
+
+	// Query all initiative links for these events
+	placeholders := make([]string, len(events))
+	args := make([]any, len(events))
+	for i, e := range events {
+		placeholders[i] = "?"
+		args[i] = e.ID
+	}
+	query := `
+		SELECT ei.event_id, si.id, si.name, si.objective, si.created_at, si.updated_at
+		FROM event_initiatives ei
+		JOIN strategic_initiatives si ON si.id = ei.initiative_id
+		WHERE ei.event_id IN (` + strings.Join(placeholders, ",") + `)
+		ORDER BY si.name`
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var eventID string
+		var init models.Initiative
+		if err := rows.Scan(&eventID, &init.ID, &init.Name, &init.Objective, &init.CreatedAt, &init.UpdatedAt); err == nil {
+			if e, ok := idx[eventID]; ok {
+				e.Initiatives = append(e.Initiatives, init)
+			}
+		}
+	}
 }
 
 // Approve sets the event status to approved.
@@ -573,4 +697,23 @@ func nullIfZero(n int) any {
 		return nil
 	}
 	return n
+}
+
+// setEventInitiativesTx replaces the initiative tags for an event within an existing transaction.
+func setEventInitiativesTx(tx *sql.Tx, eventID string, initiativeIDs []string) error {
+	if _, err := tx.Exec(`DELETE FROM event_initiatives WHERE event_id = ?`, eventID); err != nil {
+		return err
+	}
+	for _, initID := range initiativeIDs {
+		if initID == "" {
+			continue
+		}
+		if _, err := tx.Exec(`
+			INSERT INTO event_initiatives (event_id, initiative_id) VALUES (?, ?)`,
+			eventID, initID,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }

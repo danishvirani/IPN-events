@@ -1,41 +1,45 @@
-{{define "title"}}Add User{{end}}
+{{define "title"}}Invite Team Member{{end}}
 
 {{define "content"}}
-<div class="mb-6 flex items-center justify-between">
-  <h1 class="text-2xl font-bold text-gray-900">Add User</h1>
-  <a href="/admin/users" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
-</div>
+<div class="max-w-lg mx-auto">
 
-<form method="POST" action="/admin/users" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4 max-w-md">
-  <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1" for="name">Full Name <span class="text-red-500">*</span></label>
-    <input id="name" name="name" type="text" required
-           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+  <div class="mb-6">
+    <a href="/admin/users" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to Team Members</a>
+    <h1 class="text-2xl font-bold text-gray-900 mt-2">Invite Team Member</h1>
+    <p class="mt-1 text-sm text-gray-500">Send an invitation link to a new team member. They'll receive an email to create their account.</p>
   </div>
-  <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1" for="email">Email <span class="text-red-500">*</span></label>
-    <input id="email" name="email" type="email" required
-           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <form method="POST" action="/admin/users/invite" class="space-y-4">
+
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+        <input type="email" name="email" id="email" required
+               placeholder="name@example.com"
+               value="{{if .Data}}{{.Data.Email}}{{end}}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+      </div>
+
+      <div>
+        <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+        <select name="role" id="role"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+          <option value="team_member">Team Member</option>
+          <option value="viewer">Viewer</option>
+          <option value="admin">Admin</option>
+        </select>
+        <p class="mt-1 text-xs text-gray-400">Team Members can submit events. Viewers can only see the calendar and roadmap. Admins have full access to manage events, users, and settings.</p>
+      </div>
+
+      <div class="pt-2">
+        <button type="submit"
+                class="w-full bg-blue-700 hover:bg-blue-800 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors">
+          Send Invitation
+        </button>
+      </div>
+
+    </form>
   </div>
-  <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1" for="password">Password <span class="text-red-500">*</span></label>
-    <input id="password" name="password" type="password" required minlength="8"
-           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
-    <p class="text-xs text-gray-400 mt-1">Minimum 8 characters.</p>
-  </div>
-  <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1" for="role">Role <span class="text-red-500">*</span></label>
-    <select id="role" name="role" required
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
-      <option value="team_member">Team Member — can submit and manage events</option>
-      <option value="viewer">Read-Only Viewer — can view Calendar and Roadmap only</option>
-    </select>
-  </div>
-  <div class="flex justify-end gap-3 pt-2">
-    <a href="/admin/users" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</a>
-    <button type="submit" class="px-5 py-2 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors">
-      Create Account
-    </button>
-  </div>
-</form>
+
+</div>
 {{end}}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/go-pdf/fpdf"
 
 	"ipn-events/internal/db"
+	"ipn-events/internal/email"
 	"ipn-events/internal/models"
 	"ipn-events/web/middleware"
 )
@@ -45,20 +47,46 @@ type CalEvent struct {
 	DateLabel string // "Jan 18" if event_date falls in this specific month; empty otherwise
 }
 
-// CalMonth is one month's mini-calendar grid plus the events for that month.
+// CalMonthBar represents a recurring event shown as a colored bar inside a month card.
+type CalMonthBar struct {
+	Event      *models.Event
+	ColorClass string // Tailwind bg+text classes
+}
+
+// CalMonth is one month's mini-calendar grid plus recurring-event bars.
 type CalMonth struct {
 	Name        string
 	Month       int
-	MonthEvents []CalEvent // all events active in this month
+	MonthEvents []CalEvent // kept for compatibility; not rendered in current template
+	Bars        []CalMonthBar
 	Cells       []CalDayCell
 }
 
-// CalQuarterGroup holds the 3 month cards for a quarter plus any undated
-// (non-recurring, no event_date) events for that quarter shown in a spanning bar.
+// barColorClass returns a deterministic Tailwind color class pair for a recurring event.
+func barColorClass(eventID string) string {
+	palette := []string{
+		"bg-purple-100 text-purple-700",
+		"bg-emerald-100 text-emerald-700",
+		"bg-orange-100 text-orange-700",
+		"bg-rose-100 text-rose-700",
+		"bg-sky-100 text-sky-700",
+		"bg-amber-100 text-amber-700",
+		"bg-violet-100 text-violet-700",
+		"bg-teal-100 text-teal-700",
+	}
+	sum := 0
+	for _, c := range eventID {
+		sum += int(c)
+	}
+	return palette[sum%len(palette)]
+}
+
+// CalQuarterGroup holds the 3 month cards for a quarter plus all events for
+// that quarter shown in a unified full-width list below the month grids.
 type CalQuarterGroup struct {
-	QuarterLabel  string          // "Q1", "Q2", "Q3", "Q4"
-	Months        []CalMonth      // exactly 3 months
-	UndatedEvents []*models.Event // one-time events with no specific date
+	QuarterLabel string     // "Q1", "Q2", "Q3", "Q4"
+	Months       []CalMonth // exactly 3 months
+	Events       []CalEvent // all events for this quarter, sorted by date
 }
 
 // CalPageData is passed to calendar.html.
@@ -87,8 +115,9 @@ func eventMonthsForYear(e *models.Event, year int) []int {
 		return nil
 	}
 
-	// Non-recurring event with a specific date: use that date's month
-	if e.EventDate != "" && (e.Recurrence == "" || e.Recurrence == models.RecurrenceNone) {
+	// Non-recurring or annual event with a specific date: use that date's month.
+	// Annual events occur only once per year so their event_date determines the month.
+	if e.EventDate != "" && (e.Recurrence == "" || e.Recurrence == models.RecurrenceNone || e.Recurrence == models.RecurrenceAnnual) {
 		t, err := time.Parse("2006-01-02", e.EventDate)
 		if err == nil && t.Year() == year {
 			return []int{int(t.Month())}
@@ -100,7 +129,15 @@ func eventMonthsForYear(e *models.Event, year int) []int {
 		return nil // unscheduled
 	}
 
-	// Determine end month (default: end of year)
+	// Refine start month using EventDate if it falls in this calendar year.
+	if e.EventDate != "" {
+		if t, err := time.Parse("2006-01-02", e.EventDate); err == nil && t.Year() == year {
+			startMonth = int(t.Month())
+		}
+	}
+
+	// Determine end month.
+	// If no RecurrenceEndDate is set, default to 1 year from the event's start date.
 	endMonth := 12
 	if e.RecurrenceEndDate != "" {
 		t, err := time.Parse("2006-01-02", e.RecurrenceEndDate)
@@ -113,6 +150,23 @@ func eventMonthsForYear(e *models.Event, year int) []int {
 			}
 			// t.Year() > year → runs full year, endMonth stays 12
 		}
+	} else {
+		// Default: run for 1 year from EventDate (or quarter start if no EventDate).
+		var startRef time.Time
+		if e.EventDate != "" {
+			startRef, _ = time.Parse("2006-01-02", e.EventDate)
+		}
+		if startRef.IsZero() {
+			startRef = time.Date(year, time.Month(startMonth), 1, 0, 0, 0, 0, time.UTC)
+		}
+		defaultEnd := startRef.AddDate(1, 0, 0)
+		if defaultEnd.Year() < year {
+			return nil // ended before this calendar year
+		}
+		if defaultEnd.Year() == year {
+			endMonth = int(defaultEnd.Month())
+		}
+		// defaultEnd.Year() > year → event runs through end of this year
 	}
 
 	switch e.Recurrence {
@@ -139,12 +193,10 @@ func eventMonthsForYear(e *models.Event, year int) []int {
 func buildCalPage(events []*models.Event, year int) CalPageData {
 	type dayKey struct{ month, day int }
 
-	// byDate: only events with a specific event_date → for grid highlighting
+	// byDate: events with a specific event_date → for day-grid dot highlighting
 	byDate := map[dayKey][]*models.Event{}
-	// monthEventsList: events with known months (dated or recurring) → listed below each month grid
-	monthEventsList := map[int][]CalEvent{}
-	// undatedByQuarter: one-time events with no event_date → shown in the spanning quarter bar
-	undatedByQuarter := map[string][]*models.Event{}
+	// quarterEventsList: ALL events grouped by quarter → shown in the unified quarter list
+	quarterEventsList := map[string][]CalEvent{}
 	var unscheduled []*models.Event
 
 	for _, e := range events {
@@ -152,7 +204,7 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 			continue
 		}
 
-		// Grid highlight: place on specific date if event_date is set
+		// Grid dot: highlight the specific date on the mini-calendar
 		if e.EventDate != "" {
 			t, err := time.Parse("2006-01-02", e.EventDate)
 			if err == nil && t.Year() == year {
@@ -161,41 +213,43 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 			}
 		}
 
-		// One-time events with no specific date → quarter bar (or unscheduled)
-		if e.EventDate == "" && (e.Recurrence == "" || e.Recurrence == models.RecurrenceNone) {
-			_, hasQ := quarterStartMonth[e.Quarter]
-			if hasQ {
-				undatedByQuarter[e.Quarter] = append(undatedByQuarter[e.Quarter], e)
-			} else {
-				unscheduled = append(unscheduled, e)
-			}
+		// Route event to its quarter list, or unscheduled if no quarter
+		_, hasQ := quarterStartMonth[e.Quarter]
+		if !hasQ {
+			unscheduled = append(unscheduled, e)
 			continue
 		}
 
-		// Recurring events and dated events → determine active months
-		months := eventMonthsForYear(e, year)
-		if len(months) == 0 {
-			_, hasQ := quarterStartMonth[e.Quarter]
-			if !hasQ {
-				unscheduled = append(unscheduled, e)
+		dateLabel := ""
+		if e.EventDate != "" {
+			t, err := time.Parse("2006-01-02", e.EventDate)
+			if err == nil && t.Year() == year {
+				dateLabel = fmt.Sprintf("%s %d", monthNames[int(t.Month())-1][:3], t.Day())
 			}
-			continue
 		}
-
-		for _, m := range months {
-			// Build a date label only for the month the event_date actually falls in
-			dateLabel := ""
-			if e.EventDate != "" {
-				t, err := time.Parse("2006-01-02", e.EventDate)
-				if err == nil && t.Year() == year && int(t.Month()) == m {
-					dateLabel = fmt.Sprintf("%s %d", monthNames[m-1][:3], t.Day())
-				}
-			}
-			monthEventsList[m] = append(monthEventsList[m], CalEvent{Event: e, DateLabel: dateLabel})
-		}
+		quarterEventsList[e.Quarter] = append(quarterEventsList[e.Quarter], CalEvent{Event: e, DateLabel: dateLabel})
 	}
 
-	// Build all 12 month structs
+	// Sort each quarter's events: dated first (by date), undated last (by name)
+	for q := range quarterEventsList {
+		evs := quarterEventsList[q]
+		sort.Slice(evs, func(i, j int) bool {
+			di, dj := evs[i].Event.EventDate, evs[j].Event.EventDate
+			if di == "" && dj == "" {
+				return evs[i].Event.Name < evs[j].Event.Name
+			}
+			if di == "" {
+				return false
+			}
+			if dj == "" {
+				return true
+			}
+			return di < dj
+		})
+		quarterEventsList[q] = evs
+	}
+
+	// Build all 12 month structs (grid only — events listed at quarter level)
 	allMonths := make([]CalMonth, 12)
 	for m := 1; m <= 12; m++ {
 		firstDay := time.Date(year, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
@@ -214,10 +268,23 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 		}
 
 		allMonths[m-1] = CalMonth{
-			Name:        monthNames[m-1],
-			Month:       m,
-			MonthEvents: monthEventsList[m],
-			Cells:       cells,
+			Name:  monthNames[m-1],
+			Month: m,
+			Cells: cells,
+		}
+	}
+
+	// Populate recurring-event bars for each month they are active.
+	for _, e := range events {
+		if e.Year != year {
+			continue
+		}
+		switch e.Recurrence {
+		case models.RecurrenceWeekly, models.RecurrenceBiWeekly, models.RecurrenceMonthly, models.RecurrenceQuarterly:
+			color := barColorClass(e.ID)
+			for _, m := range eventMonthsForYear(e, year) {
+				allMonths[m-1].Bars = append(allMonths[m-1].Bars, CalMonthBar{Event: e, ColorClass: color})
+			}
 		}
 	}
 
@@ -240,7 +307,7 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 				allMonths[qd.months[1]-1],
 				allMonths[qd.months[2]-1],
 			},
-			UndatedEvents: undatedByQuarter[qd.label],
+			Events: quarterEventsList[qd.label],
 		}
 	}
 
@@ -256,12 +323,17 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 type AdminEventHandler struct {
-	eventRepo *db.EventRepository
-	uploadDir string
+	eventRepo      *db.EventRepository
+	commentRepo    *db.CommentRepository
+	initiativeRepo *db.InitiativeRepository
+	budgetRepo     *db.BudgetRepository
+	checklistRepo  *db.ChecklistRepository
+	emailSvc       *email.Service
+	uploadDir      string
 }
 
-func NewAdminEventHandler(eventRepo *db.EventRepository, uploadDir string) *AdminEventHandler {
-	return &AdminEventHandler{eventRepo: eventRepo, uploadDir: uploadDir}
+func NewAdminEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, emailSvc *email.Service, uploadDir string) *AdminEventHandler {
+	return &AdminEventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, emailSvc: emailSvc, uploadDir: uploadDir}
 }
 
 // adminSaveImage is the same image-upload helper as EventHandler.saveImage but for admin handlers.
@@ -295,20 +367,43 @@ func (h *AdminEventHandler) adminSaveImage(r *http.Request, keepExisting string)
 }
 
 type adminEventListData struct {
-	Events       interface{}
+	Events       []*models.Event
 	StatusFilter string
+	Search       string
+	InitiativeID string
+	Quarter      string
+	Year         int
+	Initiatives  []*models.Initiative
 }
 
 func (h *AdminEventHandler) List(w http.ResponseWriter, r *http.Request) {
-	statusFilter := r.URL.Query().Get("status")
-	events, err := h.eventRepo.ListAll(statusFilter)
+	q := r.URL.Query()
+	yearInt, _ := strconv.Atoi(q.Get("year"))
+
+	filter := db.EventFilter{
+		Status:       q.Get("status"),
+		Search:       q.Get("q"),
+		InitiativeID: q.Get("initiative"),
+		Quarter:      q.Get("quarter"),
+		Year:         yearInt,
+	}
+
+	events, err := h.eventRepo.ListAllFiltered(filter)
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	initiatives, _ := h.initiativeRepo.ListAll()
+
 	render(w, r, "web/templates/events/list_admin.html", adminEventListData{
 		Events:       events,
-		StatusFilter: statusFilter,
+		StatusFilter: filter.Status,
+		Search:       filter.Search,
+		InitiativeID: filter.InitiativeID,
+		Quarter:      filter.Quarter,
+		Year:         filter.Year,
+		Initiatives:  initiatives,
 	})
 }
 
@@ -319,7 +414,30 @@ func (h *AdminEventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	render(w, r, "web/templates/events/show.html", e)
+	comments, _ := h.commentRepo.ListByEvent(id)
+
+	var budget *models.BudgetSummary
+	var checklistData []models.ChecklistGroupData
+	if e.Status == "approved" {
+		budget, _ = h.budgetRepo.ListByEvent(id)
+		// Ensure default checklist items exist (idempotent — uses INSERT OR IGNORE)
+		conditionFn := func(cond string) bool {
+			if cond == "venue_jamatkhana" {
+				return e.VenueType == models.VenueTypeInternal
+			}
+			return false
+		}
+		_ = h.checklistRepo.InitializeDefaults(id, "", conditionFn)
+		clItems, _ := h.checklistRepo.ListByEvent(id)
+		checklistData = BuildChecklistData(e, clItems, true)
+	}
+
+	render(w, r, "web/templates/events/show.html", EventShowData{
+		Event:     e,
+		Comments:  comments,
+		Budget:    budget,
+		Checklist: checklistData,
+	})
 }
 
 // AdminEdit renders the event edit form for admins (no status restriction).
@@ -330,7 +448,11 @@ func (h *AdminEventHandler) AdminEdit(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	render(w, r, "web/templates/events/edit.html", e)
+	initiatives, _ := h.initiativeRepo.ListAll()
+	render(w, r, "web/templates/events/edit.html", EventFormData{
+		Event:       e,
+		Initiatives: initiatives,
+	})
 }
 
 // AdminUpdate saves admin edits to an event, preserving its current status.
@@ -414,12 +536,44 @@ func (h *AdminEventHandler) ReviewForm(w http.ResponseWriter, r *http.Request) {
 func (h *AdminEventHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	comment := strings.TrimSpace(r.FormValue("admin_comment"))
+	user := middleware.UserFromContext(r.Context())
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
 
 	if err := h.eventRepo.Approve(id, comment); err != nil {
 		setFlash(w, "error", "Failed to approve event.")
 		http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
 		return
 	}
+
+	// Record in activity log
+	text := "Event approved."
+	if comment != "" {
+		text = comment
+	}
+	_ = h.commentRepo.Create(&models.EventComment{
+		EventID:  id,
+		UserID:   user.ID,
+		UserName: user.Name,
+		Comment:  text,
+		Type:     models.CommentTypeApproval,
+	})
+
+	// Auto-initialize checklist defaults for the newly approved event
+	conditionFn := func(cond string) bool {
+		if cond == "venue_jamatkhana" {
+			return e.VenueType == models.VenueTypeInternal
+		}
+		return false
+	}
+	_ = h.checklistRepo.InitializeDefaults(id, user.ID, conditionFn)
+
+	// Send email notification to the event submitter
+	go h.emailSvc.SendEventNotification(e.UserEmail, e.UserName, e.Name, id, "approved", comment)
 
 	setFlash(w, "success", "Event approved.")
 	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
@@ -478,7 +632,7 @@ func (h *AdminEventHandler) RoadmapPDF(w http.ResponseWriter, r *http.Request) {
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.SetTextColor(180, 195, 220)
 	pdf.SetXY(15, 17)
-	pdf.Cell(contentW, 5, "Event Roadmap  ·  Generated "+time.Now().Format("January 2, 2006"))
+	pdf.Cell(contentW, 5, "Event Roadmap - Generated "+time.Now().Format("January 2, 2006"))
 
 	pdf.SetXY(15, 34)
 
@@ -491,17 +645,45 @@ func (h *AdminEventHandler) RoadmapPDF(w http.ResponseWriter, r *http.Request) {
 		br, bg_, bb int // border
 	}
 	qStyles := map[string]qStyle{
-		"Q1": {"Q1", "January – March", 59, 130, 246, 30, 64, 175, 147, 197, 253},
-		"Q2": {"Q2", "April – June", 34, 197, 94, 20, 83, 45, 134, 239, 172},
-		"Q3": {"Q3", "July – September", 234, 179, 8, 113, 63, 18, 253, 224, 71},
-		"Q4": {"Q4", "October – December", 168, 85, 247, 88, 28, 135, 216, 180, 254},
+		"Q1": {"Q1", "January - March", 59, 130, 246, 30, 64, 175, 147, 197, 253},
+		"Q2": {"Q2", "April - June", 34, 197, 94, 20, 83, 45, 134, 239, 172},
+		"Q3": {"Q3", "July - September", 234, 179, 8, 113, 63, 18, 253, 224, 71},
+		"Q4": {"Q4", "October - December", 168, 85, 247, 88, 28, 135, 216, 180, 254},
+	}
+
+	// pdfSafe converts a UTF-8 string to Latin-1 safe bytes for fpdf.
+	// fpdf uses Latin-1 internally; passing raw UTF-8 causes multi-byte chars
+	// (en dash, smart quotes, etc.) to render as mojibake.
+	// Steps: (1) replace common Unicode punctuation with ASCII, (2) write
+	// U+0000–U+00FF as their raw Latin-1 byte, (3) replace anything above U+00FF with '?'.
+	pdfSafe := func(s string) string {
+		s = strings.NewReplacer(
+			"\u2013", "-",   // en dash
+			"\u2014", "-",   // em dash
+			"\u2018", "'",   // left single quotation mark
+			"\u2019", "'",   // right single quotation mark
+			"\u201C", "\"",  // left double quotation mark
+			"\u201D", "\"",  // right double quotation mark
+			"\u2026", "...", // horizontal ellipsis
+			"\u00A0", " ",   // non-breaking space
+		).Replace(s)
+		var b strings.Builder
+		b.Grow(len(s))
+		for _, c := range s {
+			if c <= 0xFF {
+				b.WriteByte(byte(c)) // write the Latin-1 byte value directly
+			} else {
+				b.WriteByte('?')
+			}
+		}
+		return b.String()
 	}
 
 	truncate := func(s string, max int) string {
 		if len([]rune(s)) <= max {
 			return s
 		}
-		return string([]rune(s)[:max-1]) + "…"
+		return string([]rune(s)[:max-1]) + "..."
 	}
 
 	for _, cy := range years {
@@ -556,7 +738,7 @@ func (h *AdminEventHandler) RoadmapPDF(w http.ResponseWriter, r *http.Request) {
 
 			qs, hasStyle := qStyles[q.key]
 			if !hasStyle {
-				qs = qStyle{"–", "", 150, 150, 150, 60, 60, 60, 200, 200, 200}
+				qs = qStyle{"-", "", 150, 150, 150, 60, 60, 60, 200, 200, 200}
 			}
 
 			// Ensure the header + at least one row fits on the current page
@@ -602,26 +784,26 @@ func (h *AdminEventHandler) RoadmapPDF(w http.ResponseWriter, r *http.Request) {
 				} else {
 					pdf.SetFillColor(255, 255, 255)
 				}
-				// Border left+right+bottom only
-				roundedBits := "0"
+				// Round only the bottom corners on the last row (matches rounded top of header).
+				rBR, rBL := 0.0, 0.0
 				if i == len(q.events)-1 {
-					roundedBits = "34" // bottom-left + bottom-right
+					rBR, rBL = 2.0, 2.0
 				}
 				pdf.SetDrawColor(qs.br, qs.bg_, qs.bb)
-				pdf.RoundedRectExt(startX, rowY, contentW, 9, 0, 0, 2, 2, roundedBits+"FD")
+				pdf.RoundedRectExt(startX, rowY, contentW, 9, 0, 0, rBR, rBL, "FD")
 
 				// Event name
 				pdf.SetFont("Helvetica", "B", 9)
 				pdf.SetTextColor(30, 30, 30)
 				pdf.SetXY(startX+4, rowY+1.5)
-				name := truncate(e.Name, 55)
+				name := truncate(pdfSafe(e.Name), 55)
 				pdf.Cell(contentW*0.55, 5, name)
 
 				// Description (truncated)
 				if e.Description != "" {
 					pdf.SetFont("Helvetica", "", 8)
 					pdf.SetTextColor(120, 120, 120)
-					desc := truncate(e.Description, 50)
+					desc := truncate(pdfSafe(e.Description), 50)
 					pdf.SetXY(startX+4, rowY+5.5)
 					pdf.Cell(contentW*0.7, 3.5, desc)
 				}
@@ -631,7 +813,7 @@ func (h *AdminEventHandler) RoadmapPDF(w http.ResponseWriter, r *http.Request) {
 					pdf.SetFont("Helvetica", "", 8)
 					pdf.SetTextColor(150, 150, 150)
 					pdf.SetXY(startX, rowY+1.5)
-					pdf.CellFormat(contentW-3, 5, e.UserName, "", 0, "R", false, 0, "")
+					pdf.CellFormat(contentW-3, 5, pdfSafe(e.UserName), "", 0, "R", false, 0, "")
 				}
 			}
 
@@ -642,10 +824,12 @@ func (h *AdminEventHandler) RoadmapPDF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ── Footer ────────────────────────────────────────────────────────────────
+	// Disable auto page break so SetY(-12) doesn't push the footer onto a new page.
+	pdf.SetAutoPageBreak(false, 0)
 	pdf.SetY(-12)
 	pdf.SetFont("Helvetica", "I", 8)
 	pdf.SetTextColor(160, 160, 160)
-	pdf.CellFormat(contentW, 5, "IPN Southeast Events  ·  Confidential", "", 0, "C", false, 0, "")
+	pdf.CellFormat(contentW, 5, "IPN Southeast Events - Confidential", "", 0, "C", false, 0, "")
 
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", `attachment; filename="ipn-roadmap.pdf"`)
@@ -690,10 +874,17 @@ func groupByYear(events []*models.Event) []calendarYear {
 func (h *AdminEventHandler) Reject(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	comment := strings.TrimSpace(r.FormValue("admin_comment"))
+	user := middleware.UserFromContext(r.Context())
 
 	if comment == "" {
 		setFlash(w, "error", "A comment is required when rejecting an event.")
 		http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+		return
+	}
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
 		return
 	}
 
@@ -703,7 +894,47 @@ func (h *AdminEventHandler) Reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Record in activity log
+	_ = h.commentRepo.Create(&models.EventComment{
+		EventID:  id,
+		UserID:   user.ID,
+		UserName: user.Name,
+		Comment:  comment,
+		Type:     models.CommentTypeRejection,
+	})
+
+	// Send email notification to the event submitter
+	go h.emailSvc.SendEventNotification(e.UserEmail, e.UserName, e.Name, id, "rejected", comment)
+
 	setFlash(w, "success", "Event rejected with feedback.")
+	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+}
+
+// AddComment lets an admin post a general comment on any event.
+func (h *AdminEventHandler) AddComment(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	text := strings.TrimSpace(r.FormValue("comment"))
+	user := middleware.UserFromContext(r.Context())
+
+	if text == "" {
+		setFlash(w, "error", "Comment cannot be empty.")
+		http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+		return
+	}
+
+	_ = h.commentRepo.Create(&models.EventComment{
+		EventID:  id,
+		UserID:   user.ID,
+		UserName: user.Name,
+		Comment:  text,
+		Type:     models.CommentTypeComment,
+	})
+
+	// Send email notification to the event submitter
+	if e, err := h.eventRepo.GetByID(id); err == nil {
+		go h.emailSvc.SendEventNotification(e.UserEmail, e.UserName, e.Name, id, "comment", text)
+	}
+
 	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
 }
 
@@ -748,6 +979,40 @@ func (h *AdminEventHandler) SetDate(w http.ResponseWriter, r *http.Request) {
 
 	setFlash(w, "success", "Dates saved.")
 	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+}
+
+// ExportCSV streams all approved events as a CSV file.
+func (h *AdminEventHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
+	events, err := h.eventRepo.ListAll("")
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="ipn_events_%s.csv"`, time.Now().Format("2006-01-02")))
+
+	writer := csv.NewWriter(w)
+	_ = writer.Write([]string{
+		"Name", "Status", "Submitter", "Quarter", "Year",
+		"Event Date", "Start Time", "End Time", "Recurrence",
+		"Description", "City", "Scope", "Venue Type",
+		"Outcome", "Impact",
+		"Financial Resources", "Facilities", "Human Support", "Technology", "Partnerships",
+		"Structured Programming", "Engagement Design", "Content Delivery", "Community Building",
+	})
+
+	for _, e := range events {
+		_ = writer.Write([]string{
+			e.Name, e.Status, e.UserName, e.Quarter, strconv.Itoa(e.Year),
+			e.EventDate, e.StartTime, e.EndTime, e.Recurrence,
+			e.Description, e.City, e.Scope, e.VenueType,
+			e.Outcome, e.Impact,
+			e.Input.FinancialResources, e.Input.Facilities, e.Input.HumanSupport, e.Input.Technology, e.Input.Partnerships,
+			e.Activities.StructuredProgramming, e.Activities.EngagementDesign, e.Activities.ContentDelivery, e.Activities.CommunityBuilding,
+		})
+	}
+	writer.Flush()
 }
 
 // DownloadTemplate streams a CSV template file with the required column headers.

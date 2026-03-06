@@ -32,6 +32,7 @@
                class="absolute top-[calc(100%+6px)] left-0 bg-[#0f2040] border border-white/10 rounded-xl shadow-2xl py-1.5 z-50 min-w-[160px]">
             <a href="/admin/calendar" class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">📅 Calendar</a>
             <a href="/admin/roadmap"  class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">🗺 Roadmap</a>
+            <a href="/admin/budget"   class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">💰 Budget</a>
           </div>
         </div>
 
@@ -49,8 +50,8 @@
                x-transition:enter-start="opacity-0 translate-y-1"
                x-transition:enter-end="opacity-100 translate-y-0"
                class="absolute top-[calc(100%+6px)] left-0 bg-[#0f2040] border border-white/10 rounded-xl shadow-2xl py-1.5 z-50 min-w-[160px]">
-            <a href="/admin/users"   class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">👥 Team Members</a>
-            <a href="/admin/invites" class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">✉️ Invites</a>
+            <a href="/admin/users" class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">👥 Team Members</a>
+            <a href="/admin/initiatives" class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">⚡ Initiatives</a>
           </div>
         </div>
 
@@ -68,14 +69,21 @@
                x-transition:enter-start="opacity-0 translate-y-1"
                x-transition:enter-end="opacity-100 translate-y-0"
                class="absolute top-[calc(100%+6px)] left-0 bg-[#0f2040] border border-white/10 rounded-xl shadow-2xl py-1.5 z-50 min-w-[180px]">
+            <a href="/admin/events/export-csv"    class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">📊 Export All Events</a>
             <a href="/admin/events/import"        class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">📥 Import CSV</a>
             <a href="/admin/events/csv-template"  class="flex items-center gap-2.5 px-4 py-2 text-sm text-blue-100/80 hover:text-white hover:bg-white/10 transition-colors">📄 Download Template</a>
           </div>
         </div>
 
       {{else if .CurrentUser.IsViewer}}
-        <a href="/admin/calendar" class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">Calendar</a>
-        <a href="/admin/roadmap"  class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">Roadmap</a>
+        <a href="/admin/events"            class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">All Events</a>
+        <a href="/admin/calendar"          class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">Calendar</a>
+        <a href="/admin/roadmap"           class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">Roadmap</a>
+        <a href="/admin/budget"            class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">Budget</a>
+        <a href="/admin/events/export-csv" class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export CSV
+        </a>
 
       {{else}}
         <a href="/member/dashboard" class="text-sm text-blue-100/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">Dashboard</a>

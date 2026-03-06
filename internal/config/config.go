@@ -19,6 +19,8 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleCallbackURL  string
+	ResendAPIKey       string
+	FromEmail          string
 }
 
 func Load() *Config {
@@ -53,6 +55,11 @@ func Load() *Config {
 		callbackURL = "http://localhost:8080/auth/callback"
 	}
 
+	fromEmail := os.Getenv("FROM_EMAIL")
+	if fromEmail == "" {
+		fromEmail = "noreply@danishvirani.dev"
+	}
+
 	return &Config{
 		Port:               port,
 		DBPath:             dbPath,
@@ -63,5 +70,7 @@ func Load() *Config {
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleCallbackURL:  callbackURL,
+		ResendAPIKey:       os.Getenv("RESEND_API_KEY"),
+		FromEmail:          fromEmail,
 	}
 }

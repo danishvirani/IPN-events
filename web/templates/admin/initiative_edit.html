@@ -1,0 +1,35 @@
+{{define "title"}}Edit Initiative{{end}}
+
+{{define "content"}}
+{{$init := .Data}}
+
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Edit Initiative</h1>
+    <p class="text-gray-500 text-sm mt-1">Update the initiative details. Documents are managed on the detail page.</p>
+  </div>
+  <a href="/admin/initiatives/{{$init.ID}}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back</a>
+</div>
+
+<form method="POST" action="/admin/initiatives/{{$init.ID}}" class="space-y-6">
+
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="name">Name <span class="text-red-500">*</span></label>
+      <input id="name" name="name" type="text" required value="{{$init.Name}}"
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="objective">Objective <span class="text-red-500">*</span></label>
+      <textarea id="objective" name="objective" rows="4" required
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">{{$init.Objective}}</textarea>
+    </div>
+  </section>
+
+  <div class="flex justify-end gap-3">
+    <a href="/admin/initiatives/{{$init.ID}}" class="px-5 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</a>
+    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors">Save Changes</button>
+  </div>
+</form>
+{{end}}

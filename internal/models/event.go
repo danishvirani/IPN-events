@@ -81,6 +81,8 @@ type Event struct {
 	Impact      string
 
 	SupportRequests []SupportRequest
+	Initiatives     []Initiative
+	InitiativeIDs   []string `json:"-"` // used during form submission
 
 	Status       string
 	AdminComment string

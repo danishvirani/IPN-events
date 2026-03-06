@@ -17,18 +17,19 @@ func NewInviteRepository(db *sql.DB) *InviteRepository {
 	return &InviteRepository{db: db}
 }
 
-func (r *InviteRepository) Create(email, invitedByID string, expiresAt time.Time) (*models.Invite, error) {
+func (r *InviteRepository) Create(email, role, invitedByID string, expiresAt time.Time) (*models.Invite, error) {
 	inv := &models.Invite{
 		ID:        uuid.New().String(),
 		Email:     email,
+		Role:      role,
 		InvitedBy: invitedByID,
 		ExpiresAt: expiresAt,
 		CreatedAt: time.Now(),
 	}
 
 	_, err := r.db.Exec(
-		`INSERT INTO invites (id, email, invited_by, expires_at) VALUES (?, ?, ?, ?)`,
-		inv.ID, inv.Email, inv.InvitedBy, inv.ExpiresAt,
+		`INSERT INTO invites (id, email, role, invited_by, expires_at) VALUES (?, ?, ?, ?, ?)`,
+		inv.ID, inv.Email, inv.Role, inv.InvitedBy, inv.ExpiresAt,
 	)
 	if err != nil {
 		return nil, err
@@ -40,9 +41,9 @@ func (r *InviteRepository) GetByID(id string) (*models.Invite, error) {
 	inv := &models.Invite{}
 	var usedAt sql.NullTime
 	err := r.db.QueryRow(
-		`SELECT id, email, invited_by, expires_at, used_at, created_at
+		`SELECT id, email, role, invited_by, expires_at, used_at, created_at
 		 FROM invites WHERE id = ?`, id,
-	).Scan(&inv.ID, &inv.Email, &inv.InvitedBy, &inv.ExpiresAt, &usedAt, &inv.CreatedAt)
+	).Scan(&inv.ID, &inv.Email, &inv.Role, &inv.InvitedBy, &inv.ExpiresAt, &usedAt, &inv.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -60,10 +61,15 @@ func (r *InviteRepository) MarkUsed(id string) error {
 	return err
 }
 
+func (r *InviteRepository) Delete(id string) error {
+	_, err := r.db.Exec(`DELETE FROM invites WHERE id = ?`, id)
+	return err
+}
+
 func (r *InviteRepository) ListAll() ([]*models.Invite, error) {
 	rows, err := r.db.Query(
-		`SELECT id, email, invited_by, expires_at, used_at, created_at
-		 FROM invites ORDER BY created_at DESC`,
+		`SELECT id, email, role, invited_by, expires_at, used_at, created_at
+		 FROM invites WHERE used_at IS NULL ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -74,7 +80,7 @@ func (r *InviteRepository) ListAll() ([]*models.Invite, error) {
 	for rows.Next() {
 		inv := &models.Invite{}
 		var usedAt sql.NullTime
-		if err := rows.Scan(&inv.ID, &inv.Email, &inv.InvitedBy, &inv.ExpiresAt, &usedAt, &inv.CreatedAt); err != nil {
+		if err := rows.Scan(&inv.ID, &inv.Email, &inv.Role, &inv.InvitedBy, &inv.ExpiresAt, &usedAt, &inv.CreatedAt); err != nil {
 			return nil, err
 		}
 		if usedAt.Valid {

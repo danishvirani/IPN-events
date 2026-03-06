@@ -1,4 +1,4 @@
-{{define "title"}}{{.Data.Name}}{{end}}
+{{define "title"}}{{.Data.Event.Name}}{{end}}
 
 {{define "detail_field"}}
 {{if .Value}}
@@ -10,7 +10,8 @@
 {{end}}
 
 {{define "content"}}
-{{$e := .Data}}
+{{$e := .Data.Event}}
+{{$comments := .Data.Comments}}
 {{$isAdmin := .CurrentUser.IsAdmin}}
 
 <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
@@ -25,17 +26,17 @@
     <p class="text-gray-500 text-sm mt-1">{{$e.QuarterYear}}</p>
     {{end}}
     {{if and $e.Recurrence (ne $e.Recurrence "none")}}
-    <p class="text-gray-500 text-sm mt-0.5">Recurrence: <span class="font-medium text-gray-700 capitalize">{{$e.Recurrence}}</span>{{if $e.RecurrenceEndDate}} <span class="text-gray-400">· ends {{$e.RecurrenceEndDate}}</span>{{end}}</p>
+    <p class="text-gray-500 text-sm mt-0.5">Recurrence: <span class="font-medium text-gray-700 capitalize">{{$e.Recurrence}}</span>{{if $e.RecurrenceEndDate}} <span class="text-gray-400">&middot; ends {{$e.RecurrenceEndDate}}</span>{{end}}</p>
     {{end}}
     {{if $e.EventDate}}
-    <p class="text-gray-500 text-sm mt-0.5">Date: <span class="font-medium text-gray-700">{{$e.EventDate}}</span>{{if $e.StartTime}} · <span class="font-medium text-gray-700">{{$e.StartTime}}{{if $e.EndTime}} – {{$e.EndTime}}{{end}}</span>{{end}}</p>
+    <p class="text-gray-500 text-sm mt-0.5">Date: <span class="font-medium text-gray-700">{{$e.EventDate}}</span>{{if $e.StartTime}} &middot; <span class="font-medium text-gray-700">{{$e.StartTime}}{{if $e.EndTime}} – {{$e.EndTime}}{{end}}</span>{{end}}</p>
     {{else if $e.StartTime}}
     <p class="text-gray-500 text-sm mt-0.5">Time: <span class="font-medium text-gray-700">{{$e.StartTime}}{{if $e.EndTime}} – {{$e.EndTime}}{{end}}</span></p>
     {{end}}
   </div>
   <div class="flex gap-2 items-center">
     {{if $isAdmin}}
-      <a href="/admin/events" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">← All Events</a>
+      <a href="/admin/events" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">&larr; All Events</a>
       <a href="/admin/events/{{$e.ID}}/edit"
          class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50">
         Edit
@@ -48,8 +49,13 @@
         </button>
       </form>
     {{else}}
-      <a href="/events" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">← My Events</a>
-      {{if ne $e.Status "approved"}}
+      <a href="/events" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">&larr; My Events</a>
+      {{if eq $e.Status "rejected"}}
+      <a href="/events/{{$e.ID}}/edit"
+         class="text-sm bg-red-50 border border-red-300 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium">
+        Edit &amp; Resubmit
+      </a>
+      {{else if eq $e.Status "pending"}}
       <a href="/events/{{$e.ID}}/edit"
          class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50">
         Edit
@@ -59,17 +65,26 @@
   </div>
 </div>
 
-{{/* Admin feedback banner */}}
-{{if and $e.AdminComment (eq $e.Status "rejected")}}
+{{/* Rejection banner with resubmit CTA (team member only) */}}
+{{if and (eq $e.Status "rejected") (not $isAdmin)}}
 <div class="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
-  <p class="text-sm font-semibold text-red-700 mb-1">Feedback from Admin</p>
-  <p class="text-sm text-red-700">{{$e.AdminComment}}</p>
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <p class="text-sm font-semibold text-red-700 mb-1">Changes Requested</p>
+      <p class="text-sm text-red-600">This event was returned with feedback. Review the activity log below, make changes, and resubmit.</p>
+    </div>
+    <a href="/events/{{$e.ID}}/edit"
+       class="flex-shrink-0 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+      Edit &amp; Resubmit
+    </a>
+  </div>
 </div>
 {{end}}
-{{if and $e.AdminComment (eq $e.Status "approved")}}
+
+{{/* Approval banner (team member only) */}}
+{{if and (eq $e.Status "approved") (not $isAdmin)}}
 <div class="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
-  <p class="text-sm font-semibold text-green-700 mb-1">Admin Note</p>
-  <p class="text-sm text-green-700">{{$e.AdminComment}}</p>
+  <p class="text-sm font-semibold text-green-700">This event has been approved.</p>
 </div>
 {{end}}
 
@@ -110,6 +125,21 @@
             External Venue{{if $e.VenueAddress}} — {{$e.VenueAddress}}{{end}}
           {{end}}
         </p>
+      </div>
+    </div>
+    {{end}}
+
+    {{/* Strategic Initiatives */}}
+    {{if $e.Initiatives}}
+    <div class="mt-4 pt-4 border-t border-gray-100">
+      <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Strategic Initiatives</p>
+      <div class="flex flex-wrap gap-2">
+        {{range $e.Initiatives}}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          {{.Name}}
+        </span>
+        {{end}}
       </div>
     </div>
     {{end}}
@@ -206,6 +236,387 @@
   </section>
   {{end}}
 
+  {{/* ── Budget & Expenses (approved events only) ── */}}
+  {{if eq $e.Status "approved"}}
+  {{$budget := .Data.Budget}}
+  <section id="budget-section" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
+        <span>💰</span> Budget & Expenses
+      </h2>
+      {{if $budget}}
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold
+        {{if $budget.IsSurplus}}bg-green-50 text-green-700 border border-green-200
+        {{else}}bg-red-50 text-red-700 border border-red-200{{end}}">
+        {{if $budget.IsSurplus}}Surplus{{else}}Deficit{{end}}: {{formatMoney $budget.Balance}}
+      </span>
+      {{end}}
+    </div>
+
+    {{/* Income Section */}}
+    <div class="mb-6">
+      <h3 class="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">Income</h3>
+      {{if and $budget $budget.IncomeItems}}
+      <div class="border border-gray-100 rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Category</th>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Description</th>
+              <th class="text-right px-3 py-2 text-xs font-medium text-gray-500">Qty</th>
+              <th class="text-right px-3 py-2 text-xs font-medium text-gray-500">Unit Price</th>
+              <th class="text-right px-3 py-2 text-xs font-medium text-gray-500">Total</th>
+              {{if $isAdmin}}<th class="px-2 py-2 w-8"></th>{{end}}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{range $budget.IncomeItems}}
+            <tr class="hover:bg-gray-50">
+              <td class="px-3 py-2 font-medium text-gray-900">{{.CategoryLabel}}</td>
+              <td class="px-3 py-2 text-gray-500">{{.Description}}</td>
+              <td class="px-3 py-2 text-right text-gray-700">{{.Quantity}}</td>
+              <td class="px-3 py-2 text-right text-gray-700">{{formatMoney .UnitAmount}}</td>
+              <td class="px-3 py-2 text-right font-medium text-gray-900">{{formatMoney .Total}}</td>
+              {{if $isAdmin}}
+              <td class="px-2 py-2">
+                <form method="POST" action="/admin/events/{{$e.ID}}/budget/{{.ID}}/delete"
+                      onsubmit="return confirm('Remove this income item?')">
+                  <button type="submit" class="text-red-400 hover:text-red-600" title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </form>
+              </td>
+              {{end}}
+            </tr>
+            {{end}}
+          </tbody>
+          <tfoot class="bg-green-50">
+            <tr>
+              <td colspan="4" class="px-3 py-2 text-right text-xs font-semibold text-green-700 uppercase">Subtotal</td>
+              <td class="px-3 py-2 text-right font-bold text-green-700">{{formatMoney $budget.TotalIncome}}</td>
+              {{if $isAdmin}}<td></td>{{end}}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {{else}}
+      <p class="text-sm text-gray-400 italic">No income items yet.</p>
+      {{end}}
+
+      {{/* Add Income Form (admin only) */}}
+      {{if $isAdmin}}
+      <div x-data="{ showForm: false }" class="mt-3">
+        <button @click="showForm = !showForm"
+                class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Income
+        </button>
+        <form x-show="showForm" x-cloak method="POST" action="/admin/events/{{$e.ID}}/budget"
+              class="mt-3 p-4 bg-green-50 rounded-lg border border-green-200 space-y-3">
+          <input type="hidden" name="type" value="income">
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Category *</label>
+              <select name="category" required
+                      class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+                <option value="">Select...</option>
+                {{range incomeCategories}}
+                <option value="{{.Key}}">{{.Label}}</option>
+                {{end}}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Description <span class="text-gray-400">(required for Other)</span></label>
+              <input type="text" name="description" placeholder="e.g. 50 attendees"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+              <input type="number" name="quantity" value="1" min="1"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Amount ($) *</label>
+              <input type="text" name="unit_amount" required placeholder="25.00"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+              Add Income
+            </button>
+            <button type="button" @click="showForm = false" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+      {{end}}
+    </div>
+
+    {{/* Divider */}}
+    <div class="border-t border-gray-200 my-4"></div>
+
+    {{/* Expense Section */}}
+    <div class="mb-6">
+      <h3 class="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">Expenses</h3>
+      {{if and $budget $budget.ExpenseItems}}
+      <div class="border border-gray-100 rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Category</th>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Description</th>
+              <th class="text-right px-3 py-2 text-xs font-medium text-gray-500">Qty</th>
+              <th class="text-right px-3 py-2 text-xs font-medium text-gray-500">Unit Price</th>
+              <th class="text-right px-3 py-2 text-xs font-medium text-gray-500">Total</th>
+              {{if $isAdmin}}<th class="px-2 py-2 w-8"></th>{{end}}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{range $budget.ExpenseItems}}
+            <tr class="hover:bg-gray-50">
+              <td class="px-3 py-2 font-medium text-gray-900">{{.CategoryLabel}}</td>
+              <td class="px-3 py-2 text-gray-500">{{.Description}}</td>
+              <td class="px-3 py-2 text-right text-gray-700">{{.Quantity}}</td>
+              <td class="px-3 py-2 text-right text-gray-700">{{formatMoney .UnitAmount}}</td>
+              <td class="px-3 py-2 text-right font-medium text-gray-900">{{formatMoney .Total}}</td>
+              {{if $isAdmin}}
+              <td class="px-2 py-2">
+                <form method="POST" action="/admin/events/{{$e.ID}}/budget/{{.ID}}/delete"
+                      onsubmit="return confirm('Remove this expense item?')">
+                  <button type="submit" class="text-red-400 hover:text-red-600" title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </form>
+              </td>
+              {{end}}
+            </tr>
+            {{end}}
+          </tbody>
+          <tfoot class="bg-red-50">
+            <tr>
+              <td colspan="4" class="px-3 py-2 text-right text-xs font-semibold text-red-700 uppercase">Subtotal</td>
+              <td class="px-3 py-2 text-right font-bold text-red-700">{{formatMoney $budget.TotalExpense}}</td>
+              {{if $isAdmin}}<td></td>{{end}}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {{else}}
+      <p class="text-sm text-gray-400 italic">No expense items yet.</p>
+      {{end}}
+
+      {{/* Add Expense Form (admin only) */}}
+      {{if $isAdmin}}
+      <div x-data="{ showForm: false }" class="mt-3">
+        <button @click="showForm = !showForm"
+                class="text-sm text-red-700 hover:text-red-800 font-medium flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Expense
+        </button>
+        <form x-show="showForm" x-cloak method="POST" action="/admin/events/{{$e.ID}}/budget"
+              class="mt-3 p-4 bg-red-50 rounded-lg border border-red-200 space-y-3">
+          <input type="hidden" name="type" value="expense">
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Category *</label>
+              <select name="category" required
+                      class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                <option value="">Select...</option>
+                {{range expenseCategories}}
+                <option value="{{.Key}}">{{.Label}}</option>
+                {{end}}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Description <span class="text-gray-400">(required for Other)</span></label>
+              <input type="text" name="description" placeholder="e.g. Catering for 100"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+              <input type="number" name="quantity" value="1" min="1"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Amount ($) *</label>
+              <input type="text" name="unit_amount" required placeholder="800.00"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+              Add Expense
+            </button>
+            <button type="button" @click="showForm = false" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+      {{end}}
+    </div>
+
+    {{/* Balance Summary */}}
+    {{if $budget}}
+    <div class="border-t border-gray-200 pt-4">
+      <div class="flex items-center justify-between p-4 rounded-lg
+        {{if $budget.IsSurplus}}bg-green-50 border border-green-200{{else}}bg-red-50 border border-red-200{{end}}">
+        <div class="text-sm text-gray-600">
+          <span class="font-medium">Income:</span> {{formatMoney $budget.TotalIncome}}
+          <span class="mx-2">−</span>
+          <span class="font-medium">Expenses:</span> {{formatMoney $budget.TotalExpense}}
+        </div>
+        <div class="text-sm font-semibold {{if $budget.IsSurplus}}text-green-700{{else}}text-red-700{{end}}">
+          {{if $budget.IsSurplus}}Surplus{{else}}Deficit{{end}}: {{formatMoney $budget.Balance}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </section>
+  {{end}}
+
+  {{/* ── Event Checklist (approved events only) ── */}}
+  {{if eq $e.Status "approved"}}
+  {{$checklist := .Data.Checklist}}
+  {{if $checklist}}
+  <section id="checklist-section" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2 mb-4">
+      <span>☑️</span> Event Checklist
+    </h2>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      {{range $group := $checklist}}
+      <div class="border border-gray-100 rounded-lg p-4 bg-gray-50/50">
+        <h3 class="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">{{$group.Label}}</h3>
+        <div class="space-y-1.5">
+          {{range $group.Items}}
+          {{if .Active}}
+          <div class="flex items-center justify-between py-1">
+            <div class="flex items-center gap-2 min-w-0">
+              {{if $isAdmin}}
+              <form method="POST" action="/admin/events/{{$e.ID}}/checklist/toggle" class="inline flex-shrink-0">
+                <input type="hidden" name="item_key" value="{{.Def.Key}}">
+                <button type="submit">
+                  {{if .IsDone}}
+                  <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                  {{else}}
+                  <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  {{end}}
+                </button>
+              </form>
+              {{else}}
+              {{if .IsDone}}
+              <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              {{else}}
+              <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {{end}}
+              {{end}}
+              <span class="text-xs text-gray-700 truncate {{if .IsDone}}line-through text-gray-400{{end}}">{{.Def.Label}}</span>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0 ml-2">
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium {{.StatusBadgeClass}}">
+                {{.StatusLabel}}
+              </span>
+              {{if and $isAdmin $group.Selectable}}
+              <form method="POST" action="/admin/events/{{$e.ID}}/checklist/remove" class="inline"
+                    onsubmit="return confirm('Remove this checklist item?')">
+                <input type="hidden" name="item_key" value="{{.Def.Key}}">
+                <button type="submit" class="text-red-400 hover:text-red-600" title="Remove">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </form>
+              {{end}}
+            </div>
+          </div>
+          {{else}}
+          {{if $isAdmin}}
+          <div class="flex items-center justify-between py-1 opacity-50 hover:opacity-100 transition-opacity">
+            <span class="text-xs text-gray-500">{{.Def.Label}}</span>
+            <form method="POST" action="/admin/events/{{$e.ID}}/checklist/add" class="inline">
+              <input type="hidden" name="item_key" value="{{.Def.Key}}">
+              <button type="submit" class="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-0.5">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add
+              </button>
+            </form>
+          </div>
+          {{end}}
+          {{end}}
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+  {{end}}
+
+  {{/* ── Activity Log / Chat Thread ── */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <h2 class="text-base font-semibold text-gray-700 mb-4">Activity Log</h2>
+    {{if $comments}}
+    <div class="space-y-4 mb-6">
+      {{range $comments}}
+      <div class="flex gap-3">
+        {{/* Avatar circle with initial */}}
+        <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+          {{if eq .Type "approval"}}bg-green-100 text-green-700
+          {{else if eq .Type "rejection"}}bg-red-100 text-red-700
+          {{else if eq .Type "resubmit"}}bg-yellow-100 text-yellow-800
+          {{else}}bg-blue-100 text-blue-700{{end}}">
+          {{printf "%.1s" .UserName}}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-sm font-medium text-gray-900">{{.UserName}}</span>
+            {{if ne .Type "comment"}}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{.TypeBadgeClass}}">
+              {{.TypeLabel}}
+            </span>
+            {{end}}
+            <span class="text-xs text-gray-400">{{.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</span>
+          </div>
+          <p class="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{{.Comment}}</p>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="text-sm text-gray-400 italic mb-6">No activity yet.</p>
+    {{end}}
+
+    {{/* Add Comment Form */}}
+    <div class="border-t border-gray-100 pt-4">
+      <h3 class="text-sm font-medium text-gray-600 mb-2">Add a Comment</h3>
+      {{if $isAdmin}}
+      <form method="POST" action="/admin/events/{{$e.ID}}/comments" class="flex gap-3">
+      {{else}}
+      <form method="POST" action="/events/{{$e.ID}}/comments" class="flex gap-3">
+      {{end}}
+        <textarea name="comment" rows="2" required placeholder="Add a note or question..."
+                  class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+        <button type="submit"
+                class="self-end px-4 py-2 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors">
+          Post
+        </button>
+      </form>
+    </div>
+  </section>
+
   {{/* Admin Review Panel */}}
   {{if $isAdmin}}
   <section class="bg-white rounded-xl border border-blue-200 shadow-sm p-6">
@@ -256,7 +667,7 @@
       </div>
     </form>
     {{if $e.EventDate}}
-    <p class="text-xs text-gray-400 mt-2">Currently set to: <strong class="text-gray-600">{{$e.EventDate}}</strong>{{if $e.RecurrenceEndDate}} · ends <strong class="text-gray-600">{{$e.RecurrenceEndDate}}</strong>{{end}}</p>
+    <p class="text-xs text-gray-400 mt-2">Currently set to: <strong class="text-gray-600">{{$e.EventDate}}</strong>{{if $e.RecurrenceEndDate}} &middot; ends <strong class="text-gray-600">{{$e.RecurrenceEndDate}}</strong>{{end}}</p>
     {{end}}
   </section>
   {{end}}

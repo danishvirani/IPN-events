@@ -75,6 +75,37 @@ func (r *UserRepository) ListTeamMembers() ([]*models.User, error) {
 	return users, rows.Err()
 }
 
+// ListAll returns every user (all roles) with auth-type fields populated.
+func (r *UserRepository) ListAll() ([]*models.User, error) {
+	rows, err := r.db.Query(
+		`SELECT id, name, email, COALESCE(google_id,''), COALESCE(password_hash,''), role, created_at
+		 FROM users ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		u := &models.User{}
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.GoogleID, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+// UpdatePassword replaces a user's password hash.
+func (r *UserRepository) UpdatePassword(userID, passwordHash string) error {
+	_, err := r.db.Exec(
+		`UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?`,
+		passwordHash, userID,
+	)
+	return err
+}
+
 func (r *UserRepository) Create(id, name, email, googleID, avatarURL, role string) (*models.User, error) {
 	if id == "" {
 		id = uuid.New().String()
@@ -123,6 +154,21 @@ func (r *UserRepository) CreateWithPassword(name, email, password, role string) 
 		return nil, err
 	}
 	return u, nil
+}
+
+// UpdateRole changes the role of a user.
+func (r *UserRepository) UpdateRole(userID, role string) error {
+	_, err := r.db.Exec(
+		`UPDATE users SET role = ?, updated_at = datetime('now') WHERE id = ?`,
+		role, userID,
+	)
+	return err
+}
+
+// Delete removes a user by ID.
+func (r *UserRepository) Delete(userID string) error {
+	_, err := r.db.Exec(`DELETE FROM users WHERE id = ?`, userID)
+	return err
 }
 
 // LinkGoogle stores the name, Google ID, and avatar URL on an existing user.

@@ -1,0 +1,91 @@
+{{define "title"}}Getting Started — Viewer{{end}}
+
+{{define "content"}}
+<div class="max-w-2xl mx-auto">
+
+  {{/* Header */}}
+  <div class="mb-8">
+    <span class="inline-block px-3 py-1 text-xs font-semibold tracking-wide uppercase bg-purple-100 text-purple-700 rounded-full mb-3">Viewer</span>
+    <h1 class="text-3xl font-bold text-gray-900">Getting Started</h1>
+    <p class="mt-2 text-gray-500">Welcome to the IPN Southeast Events Portal. As a Viewer, you have read-only access to all approved events and planning views.</p>
+  </div>
+
+  <div class="space-y-6">
+
+    {{/* Step 1 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Sign In</h2>
+          <p class="text-sm text-gray-500">Use the link from your welcome email to set your password.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Click <strong>Set Password &amp; Sign In</strong> in your email</p>
+        <p>→ Choose a password (minimum 8 characters)</p>
+        <p>→ You'll be signed in automatically</p>
+        <p>→ Next time: use <strong>Login with Email</strong> on the portal</p>
+      </div>
+    </div>
+
+    {{/* Step 2 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Calendar View</h2>
+          <p class="text-sm text-gray-500">See all approved events laid out month by month.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Click <strong>Calendar</strong> in the top navigation</p>
+        <p>→ Events with confirmed dates appear on the calendar grid</p>
+        <p>→ Recurring events show as color-coded bars across their active months</p>
+        <p>→ Click any event name to view its full details</p>
+      </div>
+    </div>
+
+    {{/* Step 3 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">3</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Roadmap View</h2>
+          <p class="text-sm text-gray-500">All approved events organized by quarter.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Click <strong>Roadmap</strong> in the top navigation</p>
+        <p>→ Events are grouped into Q1–Q4 with a color-coded card for each</p>
+        <p>→ Each card shows the event name, description, and assigned date</p>
+        <p>→ Use <strong>Download PDF</strong> to export the full roadmap as a PDF</p>
+      </div>
+    </div>
+
+    {{/* Step 4 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">4</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Event Details</h2>
+          <p class="text-sm text-gray-500">Dig into the full details of any event.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Click any event card or name to open its detail page</p>
+        <p>→ You can see the full event brief: inputs, activities, outcomes, support requests</p>
+        <p>→ Viewing is read-only — reach out to an admin to make changes</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mt-8 text-center">
+    <a href="/login" class="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-colors">
+      Go to the Portal →
+    </a>
+  </div>
+
+</div>
+{{end}}

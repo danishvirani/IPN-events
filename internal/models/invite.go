@@ -5,6 +5,7 @@ import "time"
 type Invite struct {
 	ID        string
 	Email     string
+	Role      string
 	InvitedBy string
 	ExpiresAt time.Time
 	UsedAt    *time.Time

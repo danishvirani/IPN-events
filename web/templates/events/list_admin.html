@@ -4,11 +4,75 @@
 <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
   <h1 class="text-2xl font-bold text-gray-900">All Events</h1>
   <div class="flex gap-2 text-sm">
-    <a href="/admin/events" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter ""}}bg-indigo-600 text-white border-indigo-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">All</a>
-    <a href="/admin/events?status=pending" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "pending"}}bg-yellow-500 text-white border-yellow-500{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Pending</a>
-    <a href="/admin/events?status=approved" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "approved"}}bg-green-600 text-white border-green-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Approved</a>
-    <a href="/admin/events?status=rejected" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "rejected"}}bg-red-600 text-white border-red-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Rejected</a>
+    <a href="/admin/events{{if .Data.Search}}?q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter ""}}bg-indigo-600 text-white border-indigo-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">All</a>
+    <a href="/admin/events?status=pending{{if .Data.Search}}&q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "pending"}}bg-yellow-500 text-white border-yellow-500{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Pending</a>
+    <a href="/admin/events?status=approved{{if .Data.Search}}&q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "approved"}}bg-green-600 text-white border-green-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Approved</a>
+    <a href="/admin/events?status=rejected{{if .Data.Search}}&q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "rejected"}}bg-red-600 text-white border-red-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Rejected</a>
   </div>
+</div>
+
+{{/* Search & Filter Bar */}}
+<div class="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+  <form method="GET" action="/admin/events" class="flex flex-wrap gap-3 items-end">
+    {{/* Preserve status filter */}}
+    {{if .Data.StatusFilter}}
+    <input type="hidden" name="status" value="{{.Data.StatusFilter}}">
+    {{end}}
+
+    {{/* Search by name */}}
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
+      <input type="text" name="q" value="{{.Data.Search}}" placeholder="Search by event name..."
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    {{/* Initiative filter */}}
+    {{if .Data.Initiatives}}
+    <div class="min-w-[180px]">
+      <label class="block text-xs font-medium text-gray-500 mb-1">Initiative</label>
+      <select name="initiative"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+        <option value="">All Initiatives</option>
+        {{range .Data.Initiatives}}
+        <option value="{{.ID}}" {{if eq $.Data.InitiativeID .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </div>
+    {{end}}
+
+    {{/* Quarter filter */}}
+    <div class="min-w-[130px]">
+      <label class="block text-xs font-medium text-gray-500 mb-1">Quarter</label>
+      <select name="quarter"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+        <option value="">All Quarters</option>
+        <option value="Q1" {{if eq .Data.Quarter "Q1"}}selected{{end}}>Q1 (Jan-Mar)</option>
+        <option value="Q2" {{if eq .Data.Quarter "Q2"}}selected{{end}}>Q2 (Apr-Jun)</option>
+        <option value="Q3" {{if eq .Data.Quarter "Q3"}}selected{{end}}>Q3 (Jul-Sep)</option>
+        <option value="Q4" {{if eq .Data.Quarter "Q4"}}selected{{end}}>Q4 (Oct-Dec)</option>
+      </select>
+    </div>
+
+    {{/* Year filter */}}
+    <div class="min-w-[100px]">
+      <label class="block text-xs font-medium text-gray-500 mb-1">Year</label>
+      <input type="number" name="year" min="2024" max="2030" placeholder="All"
+             {{if .Data.Year}}value="{{.Data.Year}}"{{end}}
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    {{/* Buttons */}}
+    <div class="flex gap-2">
+      <button type="submit"
+              class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+        Filter
+      </button>
+      <a href="/admin/events"
+         class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+        Clear
+      </a>
+    </div>
+  </form>
 </div>
 
 {{$events := .Data.Events}}
@@ -17,13 +81,20 @@
   {{range $events}}
   <a href="/admin/events/{{.ID}}" class="block bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:border-indigo-300 hover:shadow transition-all">
     <div class="flex items-start justify-between gap-3">
-      <div>
+      <div class="min-w-0">
         <p class="font-semibold text-gray-900">{{.Name}}</p>
         <p class="text-xs text-gray-400 mt-0.5">
           Submitted by <span class="font-medium text-gray-600">{{.UserName}}</span>
-          {{if or .Quarter .Year}} · {{.QuarterYear}}{{end}}
+          {{if or .Quarter .Year}} &middot; {{.QuarterYear}}{{end}}
         </p>
         <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{.Description}}</p>
+        {{if .Initiatives}}
+        <div class="flex flex-wrap gap-1 mt-2">
+          {{range .Initiatives}}
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">{{.Name}}</span>
+          {{end}}
+        </div>
+        {{end}}
       </div>
       <span class="flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize {{.StatusBadgeClass}}">
         {{.Status}}

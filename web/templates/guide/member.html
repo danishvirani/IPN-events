@@ -1,0 +1,102 @@
+{{define "title"}}Getting Started — Team Member{{end}}
+
+{{define "content"}}
+<div class="max-w-2xl mx-auto">
+
+  {{/* Header */}}
+  <div class="mb-8">
+    <span class="inline-block px-3 py-1 text-xs font-semibold tracking-wide uppercase bg-blue-100 text-blue-700 rounded-full mb-3">Team Member</span>
+    <h1 class="text-3xl font-bold text-gray-900">Getting Started</h1>
+    <p class="mt-2 text-gray-500">Welcome to the IPN Southeast Events Portal. Here's everything you need to know to get up and running.</p>
+  </div>
+
+  <div class="space-y-6">
+
+    {{/* Step 1 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Sign In</h2>
+          <p class="text-sm text-gray-500">Use the link from your welcome email to set your password, then sign in.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Go to the <strong>Set Password &amp; Sign In</strong> link in your email</p>
+        <p>→ Choose a password (minimum 8 characters)</p>
+        <p>→ You'll be signed in automatically after setting your password</p>
+        <p>→ Next time: visit the portal and use <strong>Login with Email</strong></p>
+      </div>
+    </div>
+
+    {{/* Step 2 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Submit an Event</h2>
+          <p class="text-sm text-gray-500">Propose a new event for admin review.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Click <strong>+ New Event</strong> in the top navigation</p>
+        <p>→ Fill out the 6-section form:</p>
+        <ul class="ml-4 mt-1 space-y-0.5 list-disc list-inside text-gray-500">
+          <li><strong>Basic Info</strong> — name, quarter, year, description, recurrence</li>
+          <li><strong>Input</strong> — resources and preparation needed</li>
+          <li><strong>Activities</strong> — what will happen at the event</li>
+          <li><strong>Output</strong> — expected direct outputs</li>
+          <li><strong>Outcome &amp; Impact</strong> — longer-term effects</li>
+          <li><strong>Support Requests</strong> — any help you need from the team</li>
+        </ul>
+        <p class="mt-2">→ Click <strong>Submit for Review</strong> when ready</p>
+      </div>
+    </div>
+
+    {{/* Step 3 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">3</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Track Your Events</h2>
+          <p class="text-sm text-gray-500">See the status of everything you've submitted.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Click <strong>My Events</strong> in the navigation to see all your submissions</p>
+        <p>→ Each event shows its current status:</p>
+        <div class="ml-4 mt-1 flex flex-wrap gap-2">
+          <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 font-medium">Pending</span>
+          <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 font-medium">Approved</span>
+          <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-800 font-medium">Rejected</span>
+        </div>
+        <p class="mt-2">→ If rejected, you'll see the admin's feedback on the event page</p>
+      </div>
+    </div>
+
+    {{/* Step 4 */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-4 p-5 border-b border-gray-100">
+        <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">4</div>
+        <div>
+          <h2 class="font-semibold text-gray-900">Edit an Event</h2>
+          <p class="text-sm text-gray-500">Update a pending event before it's reviewed.</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 text-sm text-gray-600 space-y-1">
+        <p>→ Open the event from <strong>My Events</strong></p>
+        <p>→ Click <strong>Edit</strong> (only available while status is Pending)</p>
+        <p>→ Save your changes — the event will remain in review queue</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mt-8 text-center">
+    <a href="/login" class="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors">
+      Go to the Portal →
+    </a>
+  </div>
+
+</div>
+{{end}}

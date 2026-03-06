@@ -17,13 +17,31 @@ import (
 	"ipn-events/web/middleware"
 )
 
-type EventHandler struct {
-	eventRepo *db.EventRepository
-	uploadDir string
+// EventShowData holds data for the event show template (used by both team and admin handlers).
+type EventShowData struct {
+	Event     *models.Event
+	Comments  []*models.EventComment
+	Budget    *models.BudgetSummary
+	Checklist []models.ChecklistGroupData
 }
 
-func NewEventHandler(eventRepo *db.EventRepository, uploadDir string) *EventHandler {
-	return &EventHandler{eventRepo: eventRepo, uploadDir: uploadDir}
+// EventFormData holds data for the event new/edit form templates.
+type EventFormData struct {
+	Event       *models.Event
+	Initiatives []*models.Initiative
+}
+
+type EventHandler struct {
+	eventRepo      *db.EventRepository
+	commentRepo    *db.CommentRepository
+	initiativeRepo *db.InitiativeRepository
+	budgetRepo     *db.BudgetRepository
+	checklistRepo  *db.ChecklistRepository
+	uploadDir      string
+}
+
+func NewEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, uploadDir string) *EventHandler {
+	return &EventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, uploadDir: uploadDir}
 }
 
 // saveImage handles image upload from a multipart form field named "image".
@@ -59,7 +77,11 @@ func (h *EventHandler) saveImage(r *http.Request, keepExisting string) (string, 
 }
 
 func (h *EventHandler) New(w http.ResponseWriter, r *http.Request) {
-	render(w, r, "web/templates/events/new.html", nil)
+	initiatives, _ := h.initiativeRepo.ListAll()
+	render(w, r, "web/templates/events/new.html", EventFormData{
+		Event:       &models.Event{},
+		Initiatives: initiatives,
+	})
 }
 
 func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +154,30 @@ func (h *EventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render(w, r, "web/templates/events/show.html", e)
+	comments, _ := h.commentRepo.ListByEvent(id)
+
+	var budget *models.BudgetSummary
+	var checklistData []models.ChecklistGroupData
+	if e.Status == "approved" {
+		budget, _ = h.budgetRepo.ListByEvent(id)
+		// Ensure default checklist items exist (idempotent — uses INSERT OR IGNORE)
+		conditionFn := func(cond string) bool {
+			if cond == "venue_jamatkhana" {
+				return e.VenueType == models.VenueTypeInternal
+			}
+			return false
+		}
+		_ = h.checklistRepo.InitializeDefaults(id, "", conditionFn)
+		clItems, _ := h.checklistRepo.ListByEvent(id)
+		checklistData = BuildChecklistData(e, clItems, user.IsAdmin())
+	}
+
+	render(w, r, "web/templates/events/show.html", EventShowData{
+		Event:     e,
+		Comments:  comments,
+		Budget:    budget,
+		Checklist: checklistData,
+	})
 }
 
 func (h *EventHandler) Edit(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +199,11 @@ func (h *EventHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render(w, r, "web/templates/events/edit.html", e)
+	initiatives, _ := h.initiativeRepo.ListAll()
+	render(w, r, "web/templates/events/edit.html", EventFormData{
+		Event:       e,
+		Initiatives: initiatives,
+	})
 }
 
 func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -210,10 +259,27 @@ func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	previousStatus := e.Status
+
 	if err := h.eventRepo.Update(updated); err != nil {
 		setFlash(w, "error", "Failed to update event. Please try again.")
 		http.Redirect(w, r, "/events/"+id+"/edit", http.StatusSeeOther)
 		return
+	}
+
+	// If the event was previously rejected, log a resubmit entry in the chat log
+	if previousStatus == models.StatusRejected {
+		resubmitText := strings.TrimSpace(r.FormValue("resubmit_note"))
+		if resubmitText == "" {
+			resubmitText = "Event edited and resubmitted for review."
+		}
+		_ = h.commentRepo.Create(&models.EventComment{
+			EventID:  id,
+			UserID:   user.ID,
+			UserName: user.Name,
+			Comment:  resubmitText,
+			Type:     models.CommentTypeResubmit,
+		})
 	}
 
 	setFlash(w, "success", "Event updated and resubmitted for review.")
@@ -245,6 +311,7 @@ func parseEventForm(r *http.Request) *models.Event {
 		Year:              year,
 		Recurrence:        recurrence,
 		RecurrenceEndDate: strings.TrimSpace(r.FormValue("recurrence_end_date")),
+		EventDate:         strings.TrimSpace(r.FormValue("event_date")),
 		StartTime:         strings.TrimSpace(r.FormValue("start_time")),
 		EndTime:           strings.TrimSpace(r.FormValue("end_time")),
 		Description: strings.TrimSpace(r.FormValue("description")),
@@ -283,6 +350,9 @@ func parseEventForm(r *http.Request) *models.Event {
 		})
 	}
 
+	// Parse initiative IDs (checkboxes)
+	e.InitiativeIDs = r.Form["initiative_ids"]
+
 	// Parse support requests (parallel arrays)
 	types := r.Form["support_type"]
 	descs := r.Form["support_description"]
@@ -312,6 +382,39 @@ func parseEventForm(r *http.Request) *models.Event {
 	}
 
 	return e
+}
+
+// AddComment lets a team member post a comment on their own event.
+func (h *EventHandler) AddComment(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	text := strings.TrimSpace(r.FormValue("comment"))
+	user := middleware.UserFromContext(r.Context())
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if e.UserID != user.ID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	if text == "" {
+		setFlash(w, "error", "Comment cannot be empty.")
+		http.Redirect(w, r, "/events/"+id, http.StatusSeeOther)
+		return
+	}
+
+	_ = h.commentRepo.Create(&models.EventComment{
+		EventID:  id,
+		UserID:   user.ID,
+		UserName: user.Name,
+		Comment:  text,
+		Type:     models.CommentTypeComment,
+	})
+
+	http.Redirect(w, r, "/events/"+id, http.StatusSeeOther)
 }
 
 // unused import guard

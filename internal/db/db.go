@@ -44,6 +44,12 @@ func RunMigrations(db *sql.DB) {
 		"migrations/006_add_location_fields.sql",
 		"migrations/007_add_recurrence_end_date.sql",
 		"migrations/008_add_time_image.sql",
+		"migrations/009_add_password_resets.sql",
+		"migrations/010_fix_invites.sql",
+		"migrations/011_event_comments.sql",
+		"migrations/012_strategic_initiatives.sql",
+		"migrations/013_event_budget.sql",
+		"migrations/014_event_checklist.sql",
 	}
 
 	for _, path := range migrations {
