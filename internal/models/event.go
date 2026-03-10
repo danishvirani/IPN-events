@@ -84,6 +84,15 @@ type Event struct {
 	Initiatives     []Initiative
 	InitiativeIDs   []string `json:"-"` // used during form submission
 
+	AssignedToID   string // user ID of the person assigned to this event
+	AssignedToName string // denormalized for display
+
+	RegistrationCount  int    // 0 = not set; meaningful only for approved events
+	ParticipationCount int    // 0 = not set; meaningful only for approved events
+	IsPaidEvent        bool
+	RegistrationMode   string // "full" (default) or "count_only"
+	AttendanceCount    int    // manual override for actual attendance
+
 	Status       string
 	AdminComment string
 
@@ -121,6 +130,18 @@ type SupportRequest struct {
 	VenueType   string `json:"venueType"`
 	VenueDetail string `json:"venueDetail"`
 	SortOrder   int    `json:"sortOrder"`
+}
+
+// TeamMember represents a person on the event's project team.
+type TeamMember struct {
+	ID        string
+	EventID   string
+	Name      string
+	Role      string
+	Phone     string
+	Email     string
+	SortOrder int
+	CreatedAt time.Time
 }
 
 func (e *Event) QuarterYear() string {

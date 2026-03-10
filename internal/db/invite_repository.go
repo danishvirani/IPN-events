@@ -61,6 +61,11 @@ func (r *InviteRepository) MarkUsed(id string) error {
 	return err
 }
 
+func (r *InviteRepository) UpdateExpiry(id string, expiresAt time.Time) error {
+	_, err := r.db.Exec(`UPDATE invites SET expires_at = ? WHERE id = ?`, expiresAt, id)
+	return err
+}
+
 func (r *InviteRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM invites WHERE id = ?`, id)
 	return err

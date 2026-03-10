@@ -1,43 +1,361 @@
 {{define "title"}}Admin Dashboard{{end}}
 
 {{define "content"}}
-<div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-  <p class="text-gray-500 text-sm mt-1">IPN Event management overview</p>
-</div>
+{{$d := .Data}}
+{{$isAdmin := .CurrentUser.IsAdmin}}
 
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-  <div class="bg-white rounded-xl border border-yellow-200 shadow-sm p-5">
-    <p class="text-sm text-gray-500 font-medium">Pending Review</p>
-    <p class="text-3xl font-bold text-yellow-600 mt-1">{{.Data.TotalPending}}</p>
+{{/* ── Header ── */}}
+<div class="mb-6 flex items-start justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <p class="text-gray-500 text-sm mt-1">IPN Event management overview</p>
   </div>
-  <div class="bg-white rounded-xl border border-green-200 shadow-sm p-5">
-    <p class="text-sm text-gray-500 font-medium">Approved</p>
-    <p class="text-3xl font-bold text-green-600 mt-1">{{.Data.TotalApproved}}</p>
-  </div>
-  <div class="bg-white rounded-xl border border-red-200 shadow-sm p-5">
-    <p class="text-sm text-gray-500 font-medium">Rejected</p>
-    <p class="text-3xl font-bold text-red-600 mt-1">{{.Data.TotalRejected}}</p>
-  </div>
-  <div class="bg-white rounded-xl border border-indigo-200 shadow-sm p-5">
-    <p class="text-sm text-gray-500 font-medium">Team Members</p>
-    <p class="text-3xl font-bold text-indigo-600 mt-1">{{.Data.TotalUsers}}</p>
-  </div>
-</div>
-
-<div class="flex gap-3 flex-wrap">
-  <a href="/admin/events?status=pending"
-     class="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-    Review Pending Events
+  {{if $isAdmin}}
+  <a href="/admin/users/new" class="hidden sm:inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+    Invite Member
   </a>
+  {{end}}
+</div>
+
+{{/* ── Row 1: Metric Cards ── */}}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+  {{/* Total Events with status breakdown */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-medium text-gray-500">Total Events</p>
+      <div class="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </div>
+    </div>
+    <p class="text-3xl font-bold text-gray-900">{{$d.Stats.Total}}</p>
+    <div class="flex items-center gap-3 mt-2">
+      <span class="inline-flex items-center gap-1 text-xs text-yellow-600"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>{{$d.Stats.Pending}}</span>
+      <span class="inline-flex items-center gap-1 text-xs text-green-600"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>{{$d.Stats.Approved}}</span>
+      <span class="inline-flex items-center gap-1 text-xs text-red-600"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>{{$d.Stats.Rejected}}</span>
+    </div>
+  </div>
+
+  {{/* Registrations */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-medium text-gray-500">Registrations</p>
+      <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+      </div>
+    </div>
+    <p class="text-3xl font-bold text-gray-900">{{$d.Stats.TotalRegistrations}}</p>
+    <p class="text-xs text-gray-400 mt-2">Across approved events</p>
+  </div>
+
+  {{/* Participants */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-medium text-gray-500">Participants</p>
+      <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      </div>
+    </div>
+    <p class="text-3xl font-bold text-gray-900">{{$d.Stats.TotalParticipants}}</p>
+    <p class="text-xs text-gray-400 mt-2">Attended approved events</p>
+  </div>
+
+  {{/* Budget */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-medium text-gray-500">Budget ({{$d.CurrentYear}})</p>
+      <div class="w-9 h-9 rounded-lg {{if ge $d.BudgetBalance 0}}bg-green-50{{else}}bg-red-50{{end}} flex items-center justify-center">
+        <svg class="w-5 h-5 {{if ge $d.BudgetBalance 0}}text-green-600{{else}}text-red-600{{end}}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+    </div>
+    <p class="text-3xl font-bold {{if ge $d.BudgetBalance 0}}text-green-600{{else}}text-red-600{{end}}">
+      {{formatMoney $d.BudgetBalance}}
+    </p>
+    <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
+      <span>In: {{formatMoney $d.BudgetIncome}}</span>
+      <span>Out: {{formatMoney $d.BudgetExpense}}</span>
+    </div>
+  </div>
+</div>
+
+{{/* ── Row 2: Pending Alert (conditional) ── */}}
+{{if gt $d.Stats.Pending 0}}
+<div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+      <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-yellow-800">{{$d.Stats.Pending}} event{{if gt $d.Stats.Pending 1}}s{{end}} awaiting review</p>
+      <p class="text-xs text-yellow-600">Review and approve or reject pending submissions</p>
+    </div>
+  </div>
+  <a href="/admin/events?status=pending" class="inline-flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex-shrink-0">
+    Review Now
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+  </a>
+</div>
+{{end}}
+
+{{/* ── Row 3: Status Donut + Events by Quarter ── */}}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  {{/* Event Status Distribution — CSS donut chart */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <h2 class="text-sm font-semibold text-gray-900 mb-4">Event Status Distribution</h2>
+    {{if gt $d.Stats.Total 0}}
+    <div class="flex items-center gap-6"
+         x-data="{
+           total: {{$d.Stats.Total}},
+           pending: {{$d.Stats.Pending}},
+           approved: {{$d.Stats.Approved}},
+           rejected: {{$d.Stats.Rejected}},
+           get pendingDeg()  { return (this.pending / this.total) * 360 },
+           get approvedDeg() { return (this.approved / this.total) * 360 },
+           get rejectedDeg() { return (this.rejected / this.total) * 360 },
+           get gradient() {
+             const p = this.pendingDeg;
+             const a = p + this.approvedDeg;
+             return 'conic-gradient(#eab308 0deg ' + p + 'deg, #22c55e ' + p + 'deg ' + a + 'deg, #ef4444 ' + a + 'deg 360deg)';
+           }
+         }">
+      {{/* Donut chart */}}
+      <div class="relative w-32 h-32 flex-shrink-0">
+        <div class="w-32 h-32 rounded-full" :style="'background: ' + gradient"></div>
+        <div class="absolute inset-3 bg-white rounded-full flex items-center justify-center">
+          <span class="text-lg font-bold text-gray-900">{{$d.Stats.Total}}</span>
+        </div>
+      </div>
+      {{/* Legend */}}
+      <div class="space-y-3 flex-1">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+            <span class="text-sm text-gray-600">Pending</span>
+          </div>
+          <div class="text-right">
+            <span class="text-sm font-semibold text-gray-900">{{$d.Stats.Pending}}</span>
+            <span class="text-xs text-gray-400 ml-1">{{pct $d.Stats.Pending $d.Stats.Total}}%</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+            <span class="text-sm text-gray-600">Approved</span>
+          </div>
+          <div class="text-right">
+            <span class="text-sm font-semibold text-gray-900">{{$d.Stats.Approved}}</span>
+            <span class="text-xs text-gray-400 ml-1">{{pct $d.Stats.Approved $d.Stats.Total}}%</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+            <span class="text-sm text-gray-600">Rejected</span>
+          </div>
+          <div class="text-right">
+            <span class="text-sm font-semibold text-gray-900">{{$d.Stats.Rejected}}</span>
+            <span class="text-xs text-gray-400 ml-1">{{pct $d.Stats.Rejected $d.Stats.Total}}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{else}}
+    <p class="text-sm text-gray-400 py-8 text-center">No events yet</p>
+    {{end}}
+  </div>
+
+  {{/* Events by Quarter — Horizontal bar chart */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-gray-900">Events by Quarter ({{$d.CurrentYear}})</h2>
+      <a href="/admin/events" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">View all</a>
+    </div>
+    {{if $d.QuarterCounts}}
+    <div class="space-y-3">
+      {{range $d.QuarterCounts}}
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-sm font-medium text-gray-700">{{.Quarter}}</span>
+          <span class="text-sm font-semibold text-gray-900">{{.Count}}</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-3">
+          <div class="bg-indigo-500 h-3 rounded-full transition-all duration-500"
+               style="width: {{pct .Count $d.MaxQuarterCount}}%"></div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="text-sm text-gray-400 py-8 text-center">No approved events for {{$d.CurrentYear}}</p>
+    {{end}}
+  </div>
+</div>
+
+{{/* ── Row 4: Recent Submissions + Upcoming Events ── */}}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  {{/* Recent Submissions */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-900">Recent Submissions</h2>
+      <a href="/admin/events" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">View all</a>
+    </div>
+    {{if $d.RecentEvents}}
+    <div class="divide-y divide-gray-100">
+      {{range $d.RecentEvents}}
+      <a href="/admin/events/{{.ID}}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-900 truncate">{{.Name}}</p>
+          <p class="text-xs text-gray-400 mt-0.5">by {{.UserName}} &middot; {{.CreatedAt.Format "Jan 2"}}</p>
+        </div>
+        <div class="ml-3 flex-shrink-0">
+          {{if eq .Status "pending"}}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>Pending
+            </span>
+          {{else if eq .Status "approved"}}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>Approved
+            </span>
+          {{else}}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>Rejected
+            </span>
+          {{end}}
+        </div>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <div class="px-5 py-8 text-center">
+      <p class="text-sm text-gray-400">No events submitted yet</p>
+    </div>
+    {{end}}
+  </div>
+
+  {{/* Upcoming Events */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-900">Upcoming Events</h2>
+      <a href="/admin/calendar" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">Calendar</a>
+    </div>
+    {{if $d.UpcomingEvents}}
+    <div class="divide-y divide-gray-100">
+      {{range $d.UpcomingEvents}}
+      <a href="/admin/events/{{.ID}}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors">
+        <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex flex-col items-center justify-center">
+          {{if .EventDate}}
+          <span class="text-xs font-semibold text-indigo-600 uppercase leading-none">{{slice .EventDate 5 7}}/{{slice .EventDate 8 10}}</span>
+          {{else}}
+          <span class="text-xs text-gray-400">TBD</span>
+          {{end}}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-900 truncate">{{.Name}}</p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            {{.QuarterYear}}
+            {{if .City}}&middot; {{.City}}{{end}}
+          </p>
+        </div>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <div class="px-5 py-8 text-center">
+      <p class="text-sm text-gray-400">No upcoming events scheduled</p>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+{{/* ── Row 5: Initiative Coverage + Team ── */}}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  {{/* Initiative Coverage — Progress bars */}}
+  {{if $d.InitiativeCounts}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-gray-900">Initiative Coverage</h2>
+      <a href="/admin/initiatives" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">Manage</a>
+    </div>
+    <div class="space-y-3">
+      {{range $d.InitiativeCounts}}
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <a href="/admin/events?initiative={{.ID}}" class="text-sm text-gray-700 hover:text-blue-600 truncate max-w-[70%]">{{.Name}}</a>
+          <span class="text-xs font-semibold text-gray-500">{{.Count}} event{{if ne .Count 1}}s{{end}}</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2">
+          <div class="bg-purple-500 h-2 rounded-full transition-all duration-500"
+               style="width: {{pct .Count $d.MaxInitiativeCount}}%"></div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  {{/* Quick Stats & Team */}}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <h2 class="text-sm font-semibold text-gray-900 mb-4">Quick Stats</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <a href="/admin/users" class="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors text-center">
+        <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center mx-auto mb-2">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">{{$d.TotalUsers}}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Team Members</p>
+      </a>
+      <a href="/admin/events?status=approved" class="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors text-center">
+        <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-2">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">{{$d.Stats.Approved}}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Approved Events</p>
+      </a>
+      <a href="/admin/budget" class="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors text-center">
+        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">{{formatMoney $d.BudgetIncome}}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Total Income</p>
+      </a>
+      <a href="/admin/calendar" class="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors text-center">
+        <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-2">
+          <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">{{len $d.UpcomingEvents}}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Upcoming Events</p>
+      </a>
+    </div>
+  </div>
+</div>
+
+{{/* ── Row 6: Quick Actions ── */}}
+<div class="flex gap-3 flex-wrap">
   <a href="/admin/events"
      class="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
     All Events
   </a>
+  <a href="/admin/roadmap"
+     class="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+    Roadmap
+  </a>
+  {{if $isAdmin}}
   <a href="/admin/users/new"
      class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-    Add Team Member
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+    Invite Member
+  </a>
+  {{end}}
+  <a href="/admin/events/export-csv"
+     class="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    Export CSV
   </a>
 </div>
 {{end}}

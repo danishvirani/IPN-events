@@ -149,6 +149,7 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	_ = h.userRepo.UpdateLastLogin(user.ID)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookieName,
@@ -182,6 +183,7 @@ func (h *AuthHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	_ = h.userRepo.UpdateLastLogin(user.ID)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookieName,
@@ -275,6 +277,7 @@ func (h *AuthHandler) DoResetPassword(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	_ = h.userRepo.UpdateLastLogin(pr.UserID)
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookieName,
 		Value:    sessionToken,

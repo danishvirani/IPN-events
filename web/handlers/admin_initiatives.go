@@ -13,15 +13,25 @@ import (
 
 	"ipn-events/internal/db"
 	"ipn-events/internal/models"
+	"ipn-events/web/middleware"
 )
 
 type AdminInitiativeHandler struct {
 	initiativeRepo *db.InitiativeRepository
+	updateRepo     *db.InitiativeUpdateRepository
 	uploadDir      string
 }
 
-func NewAdminInitiativeHandler(initiativeRepo *db.InitiativeRepository, uploadDir string) *AdminInitiativeHandler {
-	return &AdminInitiativeHandler{initiativeRepo: initiativeRepo, uploadDir: uploadDir}
+func NewAdminInitiativeHandler(
+	initiativeRepo *db.InitiativeRepository,
+	updateRepo *db.InitiativeUpdateRepository,
+	uploadDir string,
+) *AdminInitiativeHandler {
+	return &AdminInitiativeHandler{
+		initiativeRepo: initiativeRepo,
+		updateRepo:     updateRepo,
+		uploadDir:      uploadDir,
+	}
 }
 
 // List renders all strategic initiatives.
@@ -55,6 +65,7 @@ func (h *AdminInitiativeHandler) Create(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	user := middleware.UserFromContext(r.Context())
 	init := &models.Initiative{
 		Name:      name,
 		Objective: objective,
@@ -73,13 +84,27 @@ func (h *AdminInitiativeHandler) Create(w http.ResponseWriter, r *http.Request) 
 			http.Redirect(w, r, "/admin/initiatives/"+init.ID, http.StatusSeeOther)
 			return
 		}
+		// Auto-log document upload
+		_ = h.updateRepo.Create(&models.InitiativeUpdate{
+			InitiativeID: init.ID,
+			UserID:       user.ID,
+			UserName:     user.Name,
+			Comment:      "Uploaded document: " + fh.Filename,
+			Type:         models.UpdateTypeDocAdded,
+		})
 	}
 
 	setFlash(w, "success", "Strategic initiative created.")
 	http.Redirect(w, r, "/admin/initiatives/"+init.ID, http.StatusSeeOther)
 }
 
-// Show renders a single initiative with its documents.
+// initiativeShowData bundles data for the show template.
+type initiativeShowData struct {
+	Initiative *models.Initiative
+	Updates    []*models.InitiativeUpdate
+}
+
+// Show renders a single initiative with its documents and activity log.
 func (h *AdminInitiativeHandler) Show(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	init, err := h.initiativeRepo.GetByID(id)
@@ -87,7 +112,13 @@ func (h *AdminInitiativeHandler) Show(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	render(w, r, "web/templates/admin/initiative_show.html", init)
+
+	updates, _ := h.updateRepo.ListByInitiative(id)
+
+	render(w, r, "web/templates/admin/initiative_show.html", initiativeShowData{
+		Initiative: init,
+		Updates:    updates,
+	})
 }
 
 // EditForm renders the edit form for an initiative.
@@ -113,6 +144,7 @@ func (h *AdminInitiativeHandler) Update(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	user := middleware.UserFromContext(r.Context())
 	init := &models.Initiative{
 		ID:        id,
 		Name:      name,
@@ -123,6 +155,15 @@ func (h *AdminInitiativeHandler) Update(w http.ResponseWriter, r *http.Request) 
 		http.Redirect(w, r, "/admin/initiatives/"+id+"/edit", http.StatusSeeOther)
 		return
 	}
+
+	// Auto-log the edit
+	_ = h.updateRepo.Create(&models.InitiativeUpdate{
+		InitiativeID: id,
+		UserID:       user.ID,
+		UserName:     user.Name,
+		Comment:      "Updated initiative name and objective",
+		Type:         models.UpdateTypeEdit,
+	})
 
 	setFlash(w, "success", "Initiative updated.")
 	http.Redirect(w, r, "/admin/initiatives/"+id, http.StatusSeeOther)
@@ -155,12 +196,21 @@ func (h *AdminInitiativeHandler) UploadDocument(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	user := middleware.UserFromContext(r.Context())
 	for _, fh := range files {
 		if err := h.saveDocument(id, fh); err != nil {
 			setFlash(w, "error", fmt.Sprintf("Failed to upload %s: %v", fh.Filename, err))
 			http.Redirect(w, r, "/admin/initiatives/"+id, http.StatusSeeOther)
 			return
 		}
+		// Auto-log
+		_ = h.updateRepo.Create(&models.InitiativeUpdate{
+			InitiativeID: id,
+			UserID:       user.ID,
+			UserName:     user.Name,
+			Comment:      "Uploaded document: " + fh.Filename,
+			Type:         models.UpdateTypeDocAdded,
+		})
 	}
 
 	setFlash(w, "success", fmt.Sprintf("Uploaded %d document(s).", len(files)))
@@ -172,7 +222,7 @@ func (h *AdminInitiativeHandler) DeleteDocument(w http.ResponseWriter, r *http.R
 	id := chi.URLParam(r, "id")
 	docID := chi.URLParam(r, "docId")
 
-	// Get the doc to find its filename for disk cleanup
+	// Get the doc to find its filename for disk cleanup and logging
 	doc, err := h.initiativeRepo.GetDocumentByID(docID)
 	if err != nil {
 		setFlash(w, "error", "Document not found.")
@@ -189,7 +239,40 @@ func (h *AdminInitiativeHandler) DeleteDocument(w http.ResponseWriter, r *http.R
 	// Best-effort cleanup of the file on disk
 	_ = os.Remove(filepath.Join(h.uploadDir, doc.Filename))
 
+	// Auto-log
+	user := middleware.UserFromContext(r.Context())
+	_ = h.updateRepo.Create(&models.InitiativeUpdate{
+		InitiativeID: id,
+		UserID:       user.ID,
+		UserName:     user.Name,
+		Comment:      "Removed document: " + doc.OriginalName,
+		Type:         models.UpdateTypeDocRemoved,
+	})
+
 	setFlash(w, "success", "Document deleted.")
+	http.Redirect(w, r, "/admin/initiatives/"+id, http.StatusSeeOther)
+}
+
+// AddComment handles user-posted comments on an initiative (all authenticated users).
+func (h *AdminInitiativeHandler) AddComment(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	text := strings.TrimSpace(r.FormValue("comment"))
+	user := middleware.UserFromContext(r.Context())
+
+	if text == "" {
+		setFlash(w, "error", "Comment cannot be empty.")
+		http.Redirect(w, r, "/admin/initiatives/"+id, http.StatusSeeOther)
+		return
+	}
+
+	_ = h.updateRepo.Create(&models.InitiativeUpdate{
+		InitiativeID: id,
+		UserID:       user.ID,
+		UserName:     user.Name,
+		Comment:      text,
+		Type:         models.UpdateTypeComment,
+	})
+
 	http.Redirect(w, r, "/admin/initiatives/"+id, http.StatusSeeOther)
 }
 

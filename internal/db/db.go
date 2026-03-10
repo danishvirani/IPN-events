@@ -50,6 +50,12 @@ func RunMigrations(db *sql.DB) {
 		"migrations/012_strategic_initiatives.sql",
 		"migrations/013_event_budget.sql",
 		"migrations/014_event_checklist.sql",
+		"migrations/015_event_team.sql",
+		"migrations/016_event_attendance.sql",
+		"migrations/017_initiative_updates.sql",
+		"migrations/018_add_last_login.sql",
+		"migrations/019_event_participants.sql",
+		"migrations/020_registration_mode.sql",
 	}
 
 	for _, path := range migrations {

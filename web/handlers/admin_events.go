@@ -323,17 +323,20 @@ func buildCalPage(events []*models.Event, year int) CalPageData {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 type AdminEventHandler struct {
-	eventRepo      *db.EventRepository
-	commentRepo    *db.CommentRepository
-	initiativeRepo *db.InitiativeRepository
-	budgetRepo     *db.BudgetRepository
-	checklistRepo  *db.ChecklistRepository
-	emailSvc       *email.Service
-	uploadDir      string
+	eventRepo       *db.EventRepository
+	commentRepo     *db.CommentRepository
+	initiativeRepo  *db.InitiativeRepository
+	budgetRepo      *db.BudgetRepository
+	checklistRepo   *db.ChecklistRepository
+	teamRepo        *db.TeamRepository
+	userRepo        *db.UserRepository
+	participantRepo *db.ParticipantRepository
+	emailSvc        *email.Service
+	uploadDir       string
 }
 
-func NewAdminEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, emailSvc *email.Service, uploadDir string) *AdminEventHandler {
-	return &AdminEventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, emailSvc: emailSvc, uploadDir: uploadDir}
+func NewAdminEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, teamRepo *db.TeamRepository, userRepo *db.UserRepository, participantRepo *db.ParticipantRepository, emailSvc *email.Service, uploadDir string) *AdminEventHandler {
+	return &AdminEventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, teamRepo: teamRepo, userRepo: userRepo, participantRepo: participantRepo, emailSvc: emailSvc, uploadDir: uploadDir}
 }
 
 // adminSaveImage is the same image-upload helper as EventHandler.saveImage but for admin handlers.
@@ -432,11 +435,18 @@ func (h *AdminEventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		checklistData = BuildChecklistData(e, clItems, true)
 	}
 
+	teamMembers, _ := h.teamRepo.ListByEvent(id)
+	allUsers, _ := h.userRepo.ListAll()
+	participantCounts, _ := h.participantRepo.CountByEvent(id)
+
 	render(w, r, "web/templates/events/show.html", EventShowData{
-		Event:     e,
-		Comments:  comments,
-		Budget:    budget,
-		Checklist: checklistData,
+		Event:             e,
+		Comments:          comments,
+		Budget:            budget,
+		Checklist:         checklistData,
+		TeamMembers:       teamMembers,
+		AllUsers:          allUsers,
+		ParticipantCounts: participantCounts,
 	})
 }
 
@@ -978,6 +988,34 @@ func (h *AdminEventHandler) SetDate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setFlash(w, "success", "Dates saved.")
+	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+}
+
+// UpdateAttendance saves registration and participation counts for an approved event.
+func (h *AdminEventHandler) UpdateAttendance(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if e.Status != models.StatusApproved {
+		setFlash(w, "error", "Attendance can only be tracked on approved events.")
+		http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+		return
+	}
+
+	registration, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("registration_count")))
+	participation, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("participation_count")))
+
+	if err := h.eventRepo.UpdateAttendance(id, registration, participation); err != nil {
+		setFlash(w, "error", "Failed to update attendance.")
+		http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
+		return
+	}
+
+	setFlash(w, "success", "Attendance updated.")
 	http.Redirect(w, r, "/admin/events/"+id, http.StatusSeeOther)
 }
 

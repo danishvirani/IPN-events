@@ -1,0 +1,125 @@
+{{define "title"}}Participants — {{.Data.Event.Name}}{{end}}
+
+{{define "content"}}
+{{$e := .Data.Event}}
+{{$participants := .Data.Participants}}
+{{$counts := .Data.Counts}}
+{{$search := .Data.Search}}
+
+<div class="mb-6">
+  <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+    <a href="/admin/events" class="hover:text-blue-600 transition-colors">Events</a>
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg>
+    <a href="/admin/events/{{$e.ID}}" class="hover:text-blue-600 transition-colors">{{$e.Name}}</a>
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg>
+    <span class="text-gray-700 font-medium">Participants</span>
+  </div>
+
+  <div class="flex items-start justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Participants</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        {{if $counts}}{{$counts.Total}} registered{{if gt $counts.CheckedIn 0}}, {{$counts.CheckedIn}} checked in{{end}}{{end}}
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/admin/events/{{$e.ID}}/checkin"
+         class="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Check In
+      </a>
+      <a href="/admin/events/{{$e.ID}}/participants/export"
+         class="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Export
+      </a>
+    </div>
+  </div>
+</div>
+
+{{/* ── CSV Import ── */}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+  <h2 class="text-sm font-semibold text-gray-700 mb-3">Import Participants</h2>
+  <form method="POST" action="/admin/events/{{$e.ID}}/participants/import" enctype="multipart/form-data" class="flex items-end gap-3 flex-wrap">
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs text-gray-500 mb-1">CSV File</label>
+      <input type="file" name="csv_file" accept=".csv"
+             class="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-sm file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50">
+    </div>
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">Upload</button>
+    <a href="/admin/events/{{$e.ID}}/participants/csv-template" class="text-sm text-blue-600 hover:text-blue-700 underline">Download template</a>
+  </form>
+  <p class="mt-2 text-xs text-gray-400">Columns: first_name, last_name, phone, email, jamatkhana, gender, company, title. Re-uploading updates existing records matched by email.</p>
+</div>
+
+{{/* ── Search ── */}}
+<div class="mb-4">
+  <form method="GET" action="/admin/events/{{$e.ID}}/participants" class="flex items-center gap-2">
+    <div class="relative flex-1 max-w-md">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" name="q" value="{{$search}}" placeholder="Search by name, company, title..."
+             class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+    </div>
+    <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors">Search</button>
+    {{if $search}}<a href="/admin/events/{{$e.ID}}/participants" class="text-sm text-gray-500 hover:text-gray-700">Clear</a>{{end}}
+  </form>
+</div>
+
+{{/* ── Table ── */}}
+{{if $participants}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 border-b border-gray-200">
+          <th class="text-left px-4 py-3 font-medium text-gray-600">Name</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600">Email</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Phone</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Jamatkhana</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Company</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Title</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+          <th class="text-right px-4 py-3 font-medium text-gray-600"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {{range $participants}}
+        <tr class="hover:bg-gray-50/50 transition-colors">
+          <td class="px-4 py-3">
+            <div class="font-medium text-gray-900">{{.FullName}}</div>
+            {{if .IsWalkin}}<span class="text-xs text-orange-600 font-medium">Walk-in</span>{{end}}
+          </td>
+          <td class="px-4 py-3 text-gray-600">{{.Email}}</td>
+          <td class="px-4 py-3 text-gray-600 hidden md:table-cell">{{.Phone}}</td>
+          <td class="px-4 py-3 text-gray-600 hidden lg:table-cell">{{.Jamatkhana}}</td>
+          <td class="px-4 py-3 text-gray-600 hidden lg:table-cell">{{.Company}}</td>
+          <td class="px-4 py-3 text-gray-600 hidden md:table-cell">{{.Role}}</td>
+          <td class="px-4 py-3">
+            {{if .CheckedIn}}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
+              Checked in
+            </span>
+            {{else}}
+            <span class="text-xs text-gray-400">Not checked in</span>
+            {{end}}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <form method="POST" action="/admin/events/{{$e.ID}}/participants/{{.ID}}/delete"
+                  onsubmit="return confirm('Remove this participant?')">
+              <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{else}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+  <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+  <p class="text-gray-500 text-sm">{{if $search}}No participants match your search.{{else}}No participants registered yet. Upload a CSV to add participants.{{end}}</p>
+</div>
+{{end}}
+{{end}}

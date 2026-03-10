@@ -1,0 +1,169 @@
+{{define "title"}}Check In — {{.Data.Event.Name}}{{end}}
+
+{{define "content"}}
+{{$e := .Data.Event}}
+{{$participants := .Data.Participants}}
+{{$counts := .Data.Counts}}
+{{$search := .Data.Search}}
+{{$isPaid := $e.IsPaidEvent}}
+{{$user := .CurrentUser}}
+
+<div class="mb-6">
+  <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+    {{if $user.IsAdmin}}
+    <a href="/admin/events/{{$e.ID}}" class="hover:text-blue-600 transition-colors">{{$e.Name}}</a>
+    {{else}}
+    <a href="/events/{{$e.ID}}" class="hover:text-blue-600 transition-colors">{{$e.Name}}</a>
+    {{end}}
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg>
+    <span class="text-gray-700 font-medium">Check In</span>
+  </div>
+
+  <div class="flex items-start justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Check In</h1>
+      <p class="mt-1 text-sm text-gray-500">{{$e.Name}}</p>
+    </div>
+    {{if $user.IsAdmin}}
+    <a href="/admin/events/{{$e.ID}}/participants"
+       class="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      View All Participants
+    </a>
+    {{end}}
+  </div>
+</div>
+
+{{/* ── Progress Bar ── */}}
+{{if $counts}}
+{{$pct := 0}}
+{{if gt $counts.Total 0}}{{$pct = pct $counts.CheckedIn $counts.Total}}{{end}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
+  <div class="flex items-center justify-between mb-2">
+    <span class="text-sm font-medium text-gray-700">{{$counts.CheckedIn}} / {{$counts.Total}} checked in</span>
+    <span class="text-sm font-medium text-gray-500">{{$pct}}%</span>
+  </div>
+  <div class="w-full bg-gray-200 rounded-full h-2.5">
+    <div class="bg-green-500 h-2.5 rounded-full transition-all duration-300" style="width: {{$pct}}%"></div>
+  </div>
+  {{if $isPaid}}
+  <div class="mt-2 flex items-center gap-4 text-xs text-gray-500">
+    <span>{{$counts.Paid}} / {{$counts.Total}} paid</span>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{/* ── Search + Walk-in ── */}}
+<div class="flex flex-col sm:flex-row gap-3 mb-4">
+  <form method="GET" action="/admin/events/{{$e.ID}}/checkin" class="flex items-center gap-2 flex-1">
+    <div class="relative flex-1 max-w-md">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" name="q" value="{{$search}}" placeholder="Search by name..."
+             class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+    </div>
+    <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors">Search</button>
+    {{if $search}}<a href="/admin/events/{{$e.ID}}/checkin" class="text-sm text-gray-500 hover:text-gray-700">Clear</a>{{end}}
+  </form>
+</div>
+
+{{/* ── Add Walk-in ── */}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6" x-data="{ open: false }">
+  <button @click="open = !open" class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>
+    Add Walk-in
+  </button>
+  <form x-show="open" x-cloak method="POST" action="/admin/events/{{$e.ID}}/participants/walkin" class="mt-3 flex items-end gap-3 flex-wrap">
+    <div>
+      <label class="block text-xs text-gray-500 mb-1">First Name</label>
+      <input type="text" name="first_name" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-36">
+    </div>
+    <div>
+      <label class="block text-xs text-gray-500 mb-1">Last Name</label>
+      <input type="text" name="last_name" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-36">
+    </div>
+    <div>
+      <label class="block text-xs text-gray-500 mb-1">Phone</label>
+      <input type="tel" name="phone" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-36">
+    </div>
+    <div>
+      <label class="block text-xs text-gray-500 mb-1">Email</label>
+      <input type="email" name="email" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-44">
+    </div>
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors">Add & Check In</button>
+  </form>
+</div>
+
+{{/* ── Participant List ── */}}
+{{if $participants}}
+<div class="space-y-2">
+  {{range $participants}}
+  <div class="bg-white rounded-xl border shadow-sm px-4 py-3 flex items-center gap-4 transition-colors
+    {{if .CheckedIn}}border-green-200 bg-green-50/30{{else}}border-gray-200{{end}}">
+
+    {{/* Check-in toggle */}}
+    <form method="POST" action="/admin/events/{{$e.ID}}/participants/{{.ID}}/checkin{{if $search}}?q={{$search}}{{end}}">
+      <button type="submit" class="w-6 h-6 rounded border-2 flex items-center justify-center transition-colors
+        {{if .CheckedIn}}bg-green-500 border-green-500 text-white{{else}}border-gray-300 hover:border-green-400{{end}}">
+        {{if .CheckedIn}}
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
+        {{end}}
+      </button>
+    </form>
+
+    {{/* Name & info */}}
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="font-medium text-gray-900 text-sm truncate">{{.FullName}}</span>
+        {{if .IsWalkin}}<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-medium">Walk-in</span>{{end}}
+      </div>
+      <div class="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+        {{if .Company}}<span>{{.Company}}</span>{{end}}
+        {{if .Role}}<span>{{.Role}}</span>{{end}}
+        {{if .Email}}<span class="hidden sm:inline">{{.Email}}</span>{{end}}
+      </div>
+    </div>
+
+    {{/* Timestamps */}}
+    <div class="flex items-center gap-4 shrink-0">
+      {{if .CheckedIn}}
+      <div class="text-xs text-green-600">
+        {{if .CheckedInAt}}{{.CheckedInAt.Format "3:04 PM"}}{{end}}
+      </div>
+      {{end}}
+
+      {{/* Paid toggle (only for paid events) */}}
+      {{if $isPaid}}
+      <form method="POST" action="/admin/events/{{$e.ID}}/participants/{{.ID}}/paid{{if $search}}?q={{$search}}{{end}}" class="flex items-center gap-1.5">
+        <button type="submit" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors
+          {{if .Paid}}bg-emerald-100 text-emerald-700 hover:bg-emerald-200{{else}}bg-gray-100 text-gray-500 hover:bg-gray-200{{end}}">
+          {{if .Paid}}
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          Paid
+          {{if .PaidAt}}<span class="font-normal opacity-70">{{.PaidAt.Format "3:04 PM"}}</span>{{end}}
+          {{else}}
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          Mark Paid
+          {{end}}
+        </button>
+      </form>
+      {{end}}
+    </div>
+
+  </div>
+  {{end}}
+</div>
+{{else}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+  <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+  <p class="text-gray-500 text-sm">
+    {{if $search}}No participants match your search.
+    {{else}}No participants registered yet.
+      {{if $user.IsAdmin}} <a href="/admin/events/{{$e.ID}}/participants" class="text-blue-600 hover:underline">Upload a CSV</a> to add participants, or use the walk-in form above.
+      {{else}} Use the walk-in form above to add participants.
+      {{end}}
+    {{end}}
+  </p>
+</div>
+{{end}}
+{{end}}

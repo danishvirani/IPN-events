@@ -78,7 +78,7 @@ func (r *UserRepository) ListTeamMembers() ([]*models.User, error) {
 // ListAll returns every user (all roles) with auth-type fields populated.
 func (r *UserRepository) ListAll() ([]*models.User, error) {
 	rows, err := r.db.Query(
-		`SELECT id, name, email, COALESCE(google_id,''), COALESCE(password_hash,''), role, created_at
+		`SELECT id, name, email, COALESCE(google_id,''), COALESCE(password_hash,''), role, created_at, last_login_at
 		 FROM users ORDER BY created_at DESC`,
 	)
 	if err != nil {
@@ -89,8 +89,12 @@ func (r *UserRepository) ListAll() ([]*models.User, error) {
 	var users []*models.User
 	for rows.Next() {
 		u := &models.User{}
-		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.GoogleID, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+		var lastLogin sql.NullTime
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.GoogleID, &u.PasswordHash, &u.Role, &u.CreatedAt, &lastLogin); err != nil {
 			return nil, err
+		}
+		if lastLogin.Valid {
+			u.LastLoginAt = &lastLogin.Time
 		}
 		users = append(users, u)
 	}
@@ -168,6 +172,15 @@ func (r *UserRepository) UpdateRole(userID, role string) error {
 // Delete removes a user by ID.
 func (r *UserRepository) Delete(userID string) error {
 	_, err := r.db.Exec(`DELETE FROM users WHERE id = ?`, userID)
+	return err
+}
+
+// UpdateLastLogin sets the last_login_at timestamp to now.
+func (r *UserRepository) UpdateLastLogin(userID string) error {
+	_, err := r.db.Exec(
+		`UPDATE users SET last_login_at = datetime('now') WHERE id = ?`,
+		userID,
+	)
 	return err
 }
 

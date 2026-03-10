@@ -54,6 +54,7 @@ func (h *AdminUserHandler) List(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "web/templates/admin/users.html", map[string]interface{}{
 		"Users":   users,
 		"Invites": invites,
+		"BaseURL": h.baseURL,
 	})
 }
 
@@ -144,6 +145,45 @@ func (h *AdminUserHandler) DeleteInvite(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	setFlash(w, "success", "Invitation revoked.")
+	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+}
+
+// ResendInvite resends the invitation email and refreshes the 7-day expiry.
+func (h *AdminUserHandler) ResendInvite(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	inv, err := h.inviteRepo.GetByID(id)
+	if err != nil {
+		setFlash(w, "error", "Invitation not found.")
+		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+		return
+	}
+	if !inv.IsValid() {
+		setFlash(w, "error", "This invitation has already been used or expired. Create a new one instead.")
+		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+		return
+	}
+
+	// Refresh expiry to 7 days from now
+	if err := h.inviteRepo.UpdateExpiry(id, time.Now().Add(7*24*time.Hour)); err != nil {
+		setFlash(w, "error", "Failed to refresh invitation.")
+		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+		return
+	}
+
+	if h.emailSvc != nil && h.emailSvc.Enabled() {
+		if err := h.emailSvc.SendInvite(inv.Email, inv.ID, inv.Role); err != nil {
+			log.Printf("email: resend invite to %s: %v", inv.Email, err)
+			link := fmt.Sprintf("%s/invite/%s", h.baseURL, inv.ID)
+			setFlash(w, "error", fmt.Sprintf("Email failed. Share this link with %s: %s", inv.Email, link))
+		} else {
+			setFlash(w, "success", fmt.Sprintf("Invitation resent to %s.", inv.Email))
+		}
+	} else {
+		link := fmt.Sprintf("%s/invite/%s", h.baseURL, inv.ID)
+		setFlash(w, "success", fmt.Sprintf("Invite link for %s: %s", inv.Email, link))
+	}
+
 	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 }
 

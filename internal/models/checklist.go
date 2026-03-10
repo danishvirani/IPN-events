@@ -96,6 +96,7 @@ var ChecklistCatalog = []ChecklistItemDef{
 	{Key: "logistics_space_reservation", Label: "Space Reservation", Group: ChecklistGroupLogistics, NeedsApproval: true, Condition: "venue_jamatkhana"},
 	{Key: "logistics_flyer_approval", Label: "Flyer Approval", Group: ChecklistGroupLogistics, NeedsApproval: true},
 	{Key: "logistics_pdt_food_request", Label: "PDT Food Request", Group: ChecklistGroupLogistics, NeedsApproval: true},
+	{Key: "logistics_council_calendar", Label: "Council Calendar Approval", Group: ChecklistGroupLogistics, NeedsApproval: true},
 
 	// ── Marketing — Approval Required (optional, admin selects) ──
 	{Key: "marketing_approval_ismaili_insight", Label: "Ismaili Insight", Group: ChecklistGroupMarketingApproval, NeedsApproval: true},

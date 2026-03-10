@@ -79,17 +79,22 @@ func main() {
 
 	// Handlers
 	authHandler            := handlers.NewAuthHandler(sessionSvc, userRepo, resetRepo, inviteRepo, googleAuth, cfg.AdminEmail)
-	dashboardHandler       := handlers.NewDashboardHandler(eventRepo, userRepo)
 	budgetRepo             := db.NewBudgetRepository(sqlDB)
 	checklistRepo          := db.NewChecklistRepository(sqlDB)
-	eventHandler           := handlers.NewEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, cfg.UploadDir)
-	adminEventHandler      := handlers.NewAdminEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, emailSvc, cfg.UploadDir)
+	teamRepo               := db.NewTeamRepository(sqlDB)
+	participantRepo        := db.NewParticipantRepository(sqlDB)
+	initUpdateRepo         := db.NewInitiativeUpdateRepository(sqlDB)
+	dashboardHandler       := handlers.NewDashboardHandler(eventRepo, userRepo, budgetRepo, initiativeRepo)
+	eventHandler           := handlers.NewEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, teamRepo, participantRepo, cfg.UploadDir)
+	adminEventHandler      := handlers.NewAdminEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, teamRepo, userRepo, participantRepo, emailSvc, cfg.UploadDir)
 	budgetHandler          := handlers.NewBudgetHandler(eventRepo, budgetRepo)
 	checklistHandler       := handlers.NewChecklistHandler(eventRepo, checklistRepo)
+	teamHandler            := handlers.NewTeamHandler(eventRepo, teamRepo, userRepo)
+	participantHandler     := handlers.NewParticipantHandler(eventRepo, participantRepo)
 	guideHandler           := handlers.NewGuideHandler()
 	inviteHandler          := handlers.NewInviteHandler(inviteRepo, userRepo, sessionSvc, googleAuth)
 	adminUserHandler       := handlers.NewAdminUserHandler(userRepo, inviteRepo, resetRepo, baseURL, emailSvc)
-	adminInitiativeHandler := handlers.NewAdminInitiativeHandler(initiativeRepo, cfg.UploadDir)
+	adminInitiativeHandler := handlers.NewAdminInitiativeHandler(initiativeRepo, initUpdateRepo, cfg.UploadDir)
 
 	// Router
 	r := chi.NewRouter()
@@ -138,11 +143,25 @@ func main() {
 		r.Get("/events/{id}/edit", eventHandler.Edit)
 		r.Post("/events/{id}",     eventHandler.Update)
 		r.Post("/events/{id}/comments", eventHandler.AddComment)
+		r.Post("/events/{id}/team/add",              teamHandler.AddMember)
+		r.Post("/events/{id}/team/{mid}/delete",     teamHandler.DeleteMember)
+
+		// Check-in routes (admin or event owner)
+		r.Get("/admin/events/{id}/checkin",                        participantHandler.CheckinPage)
+		r.Post("/admin/events/{id}/participants/{pid}/checkin",    participantHandler.ToggleCheckin)
+		r.Post("/admin/events/{id}/participants/{pid}/paid",       participantHandler.TogglePaid)
+		r.Post("/admin/events/{id}/participants/walkin",           participantHandler.AddWalkin)
+
+		// Strategic Initiatives (all authenticated users: view + comment)
+		r.Get("/admin/initiatives",                       adminInitiativeHandler.List)
+		r.Get("/admin/initiatives/{id}",                  adminInitiativeHandler.Show)
+		r.Post("/admin/initiatives/{id}/comments",        adminInitiativeHandler.AddComment)
 
 		// Admin + Viewer shared routes (read-only access to events)
 		r.Group(func(r chi.Router) {
 			r.Use(webmw.RequireAdminOrViewer)
 
+			r.Get("/admin/dashboard",          dashboardHandler.AdminDashboard)
 			r.Get("/admin/calendar",           adminEventHandler.Calendar)
 			r.Get("/admin/roadmap",            adminEventHandler.Roadmap)
 			r.Get("/admin/roadmap/pdf",        adminEventHandler.RoadmapPDF)
@@ -155,8 +174,6 @@ func main() {
 		// Admin-only routes (write operations)
 		r.Group(func(r chi.Router) {
 			r.Use(webmw.RequireAdmin)
-
-			r.Get("/admin/dashboard", dashboardHandler.AdminDashboard)
 
 			r.Get("/admin/events/csv-template",           adminEventHandler.DownloadTemplate)
 			r.Get("/admin/events/import",                 adminEventHandler.ImportPage)
@@ -174,12 +191,28 @@ func main() {
 			r.Post("/admin/events/{id}/checklist/toggle",          checklistHandler.ToggleItem)
 			r.Post("/admin/events/{id}/checklist/add",             checklistHandler.AddItem)
 			r.Post("/admin/events/{id}/checklist/remove",          checklistHandler.RemoveItem)
+			r.Post("/admin/events/{id}/team/add",                  teamHandler.AddMember)
+			r.Post("/admin/events/{id}/team/{mid}/delete",         teamHandler.DeleteMember)
+			r.Post("/admin/events/{id}/assign",                    teamHandler.AssignTo)
+			r.Post("/admin/events/{id}/attendance",                adminEventHandler.UpdateAttendance)
 
-			// Strategic Initiatives
-			r.Get("/admin/initiatives",                       adminInitiativeHandler.List)
+			// Participant management (admin only)
+			r.Get("/admin/events/{id}/participants",                       participantHandler.ListParticipants)
+			r.Get("/admin/events/{id}/participants/csv-template",          participantHandler.DownloadTemplate)
+			r.Post("/admin/events/{id}/participants/import",               participantHandler.ImportCSV)
+			r.Get("/admin/events/{id}/participants/export",                participantHandler.ExportParticipants)
+			r.Post("/admin/events/{id}/participants/{pid}/delete",         participantHandler.DeleteParticipant)
+			r.Post("/admin/events/{id}/toggle-paid-event",                 participantHandler.TogglePaidEvent)
+			r.Post("/admin/events/{id}/registration-mode",                 participantHandler.SetRegistrationMode)
+			r.Post("/admin/events/{id}/update-counts",                     participantHandler.UpdateAttendance)
+
+			// Cross-event registrants (admin only)
+			r.Get("/admin/registrants",                                    participantHandler.ListRegistrants)
+			r.Get("/admin/registrants/{key}",                              participantHandler.ShowRegistrant)
+
+			// Strategic Initiatives (admin-only write operations)
 			r.Get("/admin/initiatives/new",                   adminInitiativeHandler.NewForm)
 			r.Post("/admin/initiatives",                      adminInitiativeHandler.Create)
-			r.Get("/admin/initiatives/{id}",                  adminInitiativeHandler.Show)
 			r.Get("/admin/initiatives/{id}/edit",             adminInitiativeHandler.EditForm)
 			r.Post("/admin/initiatives/{id}",                 adminInitiativeHandler.Update)
 			r.Post("/admin/initiatives/{id}/delete",          adminInitiativeHandler.Delete)
@@ -191,6 +224,7 @@ func main() {
 			r.Post("/admin/users/invite",                  adminUserHandler.CreateInvite)
 			r.Post("/admin/users/{id}/role",               adminUserHandler.UpdateRole)
 			r.Post("/admin/users/invite/{id}/delete",      adminUserHandler.DeleteInvite)
+			r.Post("/admin/users/invite/{id}/resend",      adminUserHandler.ResendInvite)
 			r.Post("/admin/users/{id}/delete",             adminUserHandler.DeleteUser)
 			r.Get("/admin/users/{id}/reset-password",      adminUserHandler.ResetPasswordForm)
 			r.Post("/admin/users/{id}/reset-password",     adminUserHandler.ResetPassword)

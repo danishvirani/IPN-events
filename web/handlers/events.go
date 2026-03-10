@@ -19,10 +19,13 @@ import (
 
 // EventShowData holds data for the event show template (used by both team and admin handlers).
 type EventShowData struct {
-	Event     *models.Event
-	Comments  []*models.EventComment
-	Budget    *models.BudgetSummary
-	Checklist []models.ChecklistGroupData
+	Event             *models.Event
+	Comments          []*models.EventComment
+	Budget            *models.BudgetSummary
+	Checklist         []models.ChecklistGroupData
+	TeamMembers       []*models.TeamMember
+	AllUsers          []*models.User // for admin "Assigned To" dropdown
+	ParticipantCounts *models.ParticipantCounts
 }
 
 // EventFormData holds data for the event new/edit form templates.
@@ -32,16 +35,18 @@ type EventFormData struct {
 }
 
 type EventHandler struct {
-	eventRepo      *db.EventRepository
-	commentRepo    *db.CommentRepository
-	initiativeRepo *db.InitiativeRepository
-	budgetRepo     *db.BudgetRepository
-	checklistRepo  *db.ChecklistRepository
-	uploadDir      string
+	eventRepo       *db.EventRepository
+	commentRepo     *db.CommentRepository
+	initiativeRepo  *db.InitiativeRepository
+	budgetRepo      *db.BudgetRepository
+	checklistRepo   *db.ChecklistRepository
+	teamRepo        *db.TeamRepository
+	participantRepo *db.ParticipantRepository
+	uploadDir       string
 }
 
-func NewEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, uploadDir string) *EventHandler {
-	return &EventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, uploadDir: uploadDir}
+func NewEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, teamRepo *db.TeamRepository, participantRepo *db.ParticipantRepository, uploadDir string) *EventHandler {
+	return &EventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, teamRepo: teamRepo, participantRepo: participantRepo, uploadDir: uploadDir}
 }
 
 // saveImage handles image upload from a multipart form field named "image".
@@ -172,11 +177,16 @@ func (h *EventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		checklistData = BuildChecklistData(e, clItems, user.IsAdmin())
 	}
 
+	teamMembers, _ := h.teamRepo.ListByEvent(id)
+	participantCounts, _ := h.participantRepo.CountByEvent(id)
+
 	render(w, r, "web/templates/events/show.html", EventShowData{
-		Event:     e,
-		Comments:  comments,
-		Budget:    budget,
-		Checklist: checklistData,
+		Event:             e,
+		Comments:          comments,
+		Budget:            budget,
+		Checklist:         checklistData,
+		TeamMembers:       teamMembers,
+		ParticipantCounts: participantCounts,
 	})
 }
 

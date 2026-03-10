@@ -106,6 +106,19 @@ func (r *BudgetRepository) ListByEvent(eventID string) (*models.BudgetSummary, e
 	return summary, nil
 }
 
+// CurrentYearBalance returns total income and expense (in cents) across all approved events for the current year.
+func (r *BudgetRepository) CurrentYearBalance() (income, expense int, err error) {
+	err = r.db.QueryRow(`
+		SELECT
+			COALESCE(SUM(CASE WHEN b.type='income' THEN b.quantity*b.unit_amount ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN b.type='expense' THEN b.quantity*b.unit_amount ELSE 0 END), 0)
+		FROM event_budget_items b
+		JOIN events e ON b.event_id = e.id
+		WHERE e.status = 'approved' AND e.year = CAST(strftime('%Y', 'now') AS INTEGER)`,
+	).Scan(&income, &expense)
+	return
+}
+
 // YearlySummary returns per-event budget totals for all approved events in a given year.
 func (r *BudgetRepository) YearlySummary(year int) ([]models.EventBudgetRow, error) {
 	rows, err := r.db.Query(`

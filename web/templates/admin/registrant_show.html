@@ -1,0 +1,130 @@
+{{define "title"}}{{.Data.Name}}{{end}}
+
+{{define "content"}}
+{{$r := .Data}}
+
+<div class="mb-6">
+  <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+    <a href="/admin/registrants" class="hover:text-blue-600 transition-colors">Registrants</a>
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 5l7 7-7 7"/></svg>
+    <span class="text-gray-700 font-medium">{{$r.Name}}</span>
+  </div>
+  <h1 class="text-2xl font-bold text-gray-900">{{$r.Name}}</h1>
+</div>
+
+{{/* Contact Info Card */}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+  <h2 class="text-sm font-semibold text-gray-700 mb-4">Contact Information</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+    {{/* Emails */}}
+    <div>
+      <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        Email
+      </div>
+      {{if $r.Emails}}
+        {{range $r.Emails}}
+        <div class="text-sm text-gray-800">{{.}}</div>
+        {{end}}
+      {{else}}
+        <div class="text-sm text-gray-300">Not provided</div>
+      {{end}}
+    </div>
+
+    {{/* Phones */}}
+    <div>
+      <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+        Phone
+      </div>
+      {{if $r.Phones}}
+        {{range $r.Phones}}
+        <div class="text-sm text-gray-800">{{.}}</div>
+        {{end}}
+      {{else}}
+        <div class="text-sm text-gray-300">Not provided</div>
+      {{end}}
+    </div>
+
+    {{/* Jamatkhana */}}
+    <div>
+      <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Jamatkhana
+      </div>
+      {{if $r.Jamatkhanas}}
+        {{range $r.Jamatkhanas}}
+        <div class="text-sm text-gray-800">{{.}}</div>
+        {{end}}
+      {{else}}
+        <div class="text-sm text-gray-300">Not provided</div>
+      {{end}}
+    </div>
+
+    {{/* Title */}}
+    <div>
+      <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        Title
+      </div>
+      {{if $r.Title}}
+        <div class="text-sm text-gray-800">{{$r.Title}}</div>
+      {{else}}
+        <div class="text-sm text-gray-300">Not provided</div>
+      {{end}}
+    </div>
+
+    {{/* Company */}}
+    <div>
+      <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"/></svg>
+        Company
+      </div>
+      {{if $r.Company}}
+        <div class="text-sm text-gray-800">{{$r.Company}}</div>
+      {{else}}
+        <div class="text-sm text-gray-300">Not provided</div>
+      {{end}}
+    </div>
+
+  </div>
+</div>
+
+{{/* Events Card */}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-100">
+    <h2 class="text-sm font-semibold text-gray-700">Events Attended ({{$r.TotalEvents}})</h2>
+  </div>
+  {{if $r.Events}}
+  <div class="divide-y divide-gray-100">
+    {{range $r.Events}}
+    <div class="px-5 py-4 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
+      <div class="min-w-0 flex-1">
+        <a href="/admin/events/{{.EventID}}" class="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors">{{.EventName}}</a>
+        {{if .EventDate}}<div class="mt-1 text-xs text-gray-400">{{.EventDate}}</div>{{end}}
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        {{if .CheckedIn}}
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
+          Checked in
+        </span>
+        {{else}}
+        <span class="text-xs text-gray-300">Not checked in</span>
+        {{end}}
+        {{if .Paid}}
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          Paid
+        </span>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="px-5 py-8 text-center text-sm text-gray-400">No events recorded.</div>
+  {{end}}
+</div>
+{{end}}

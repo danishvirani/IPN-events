@@ -144,11 +144,29 @@
     </div>
     {{end}}
 
-    {{if $isAdmin}}
-    <p class="text-xs text-gray-400 mt-4">Submitted by <strong class="text-gray-600">{{$e.UserName}}</strong> ({{$e.UserEmail}}) on {{$e.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</p>
-    {{else}}
-    <p class="text-xs text-gray-400 mt-4">Submitted {{$e.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</p>
-    {{end}}
+    {{/* Created / Assigned info */}}
+    <div class="mt-4 pt-4 border-t border-gray-100 grid sm:grid-cols-2 gap-3">
+      <div>
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Created By</p>
+        <p class="text-sm text-gray-700">{{$e.UserName}}{{if $isAdmin}} <span class="text-gray-400">({{$e.UserEmail}})</span>{{end}}</p>
+        <p class="text-xs text-gray-400">{{$e.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</p>
+      </div>
+      <div>
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Assigned To</p>
+        {{if $isAdmin}}
+        <form method="POST" action="/admin/events/{{$e.ID}}/assign" class="flex items-center gap-2">
+          <select name="assigned_to" onchange="this.form.submit()"
+                  class="text-sm rounded-lg border border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {{range .Data.AllUsers}}
+            <option value="{{.ID}}" {{if eq .ID $e.AssignedToID}}selected{{end}}>{{.Name}}</option>
+            {{end}}
+          </select>
+        </form>
+        {{else}}
+        <p class="text-sm text-gray-700">{{$e.AssignedToName}}</p>
+        {{end}}
+      </div>
+    </div>
   </section>
 
   {{/* Logic Model */}}
@@ -236,13 +254,321 @@
   </section>
   {{end}}
 
+  {{/* ── Project Team (toggle — only for high-lift events) ── */}}
+  {{$teamMembers := .Data.TeamMembers}}
+  {{$hasTeam := $teamMembers}}
+  {{$canManageTeam := or $isAdmin (eq $.CurrentUser.ID $e.UserID)}}
+  <section id="team-section" x-data="{ open: {{if $hasTeam}}true{{else}}false{{end}}, showAddForm: false }">
+
+    {{/* Toggle bar — compact when off, shows nothing else */}}
+    {{if $canManageTeam}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between cursor-pointer select-none"
+         :class="open ? 'rounded-b-none border-b-0' : ''"
+         @click="open = !open">
+      <div class="flex items-center gap-3">
+        <button type="button" @click.stop="open = !open"
+                class="w-9 h-5 rounded-full transition-colors duration-200 focus:outline-none"
+                :class="open ? 'bg-blue-600' : 'bg-gray-300'">
+          <span class="block w-3.5 h-3.5 rounded-full bg-white shadow transform transition-transform duration-200"
+                :class="open ? 'translate-x-[18px]' : 'translate-x-[3px]'"></span>
+        </button>
+        <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg> Project Team
+          {{if $hasTeam}}
+          <span class="text-xs font-normal text-gray-400">({{len $teamMembers}})</span>
+          {{end}}
+        </h2>
+      </div>
+      <span class="text-xs text-gray-400" x-show="!open" x-cloak>For high-lift events</span>
+    </div>
+    {{else if $hasTeam}}
+    {{/* Non-owner, non-admin: only show header if team exists */}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-4 rounded-b-none border-b-0">
+      <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg> Project Team
+        <span class="text-xs font-normal text-gray-400">({{len $teamMembers}})</span>
+      </h2>
+    </div>
+    {{end}}
+
+    {{/* Expanded content — only visible when toggled on */}}
+    <div x-show="open" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="bg-white rounded-b-xl border border-gray-200 shadow-sm border-t border-gray-100 px-6 pb-6 pt-4">
+
+      {{if $canManageTeam}}
+      <div class="flex justify-end mb-3">
+        <button @click.stop="showAddForm = !showAddForm"
+                class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Member
+        </button>
+      </div>
+      {{end}}
+
+      {{if $teamMembers}}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Name</th>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Role</th>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Phone</th>
+              <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Email</th>
+              {{if $canManageTeam}}
+              <th class="px-3 py-2"></th>
+              {{end}}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{range $teamMembers}}
+            <tr>
+              <td class="px-3 py-2.5 text-gray-800 font-medium">{{.Name}}</td>
+              <td class="px-3 py-2.5">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">{{.Role}}</span>
+              </td>
+              <td class="px-3 py-2.5 text-gray-600">{{if .Phone}}{{.Phone}}{{else}}<span class="text-gray-300">—</span>{{end}}</td>
+              <td class="px-3 py-2.5 text-gray-600">{{if .Email}}{{.Email}}{{else}}<span class="text-gray-300">—</span>{{end}}</td>
+              {{if $canManageTeam}}
+              <td class="px-3 py-2.5 text-right">
+                <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/team/{{.ID}}/delete{{else}}/events/{{$e.ID}}/team/{{.ID}}/delete{{end}}"
+                      onsubmit="return confirm('Remove this team member?')">
+                  <button type="submit" class="text-red-400 hover:text-red-600 transition-colors" title="Remove">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                </form>
+              </td>
+              {{end}}
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <p class="text-sm text-gray-400 italic">No team members added yet. Click "Add Member" to get started.</p>
+      {{end}}
+
+      {{/* Add member form */}}
+      {{if $canManageTeam}}
+      <div x-show="showAddForm" x-cloak class="mt-4 pt-4 border-t border-gray-100" x-data="{ selectedRole: '' }">
+        <h3 class="text-sm font-medium text-gray-600 mb-3">Add Team Member</h3>
+        <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/team/add{{else}}/events/{{$e.ID}}/team/add{{end}}"
+              class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Name *</label>
+            <input type="text" name="name" required placeholder="Full name"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Role *</label>
+            <select name="role" required x-model="selectedRole"
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Select role…</option>
+              <option value="Project Manager">Project Manager</option>
+              <option value="Logistics Lead">Logistics Lead</option>
+              <option value="Marketing Lead">Marketing Lead</option>
+              <option value="Volunteer Coordinator">Volunteer Coordinator</option>
+              <option value="other">Other…</option>
+            </select>
+            <input x-show="selectedRole === 'other'" x-cloak type="text" name="role_other" placeholder="Enter custom role"
+                   class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Phone</label>
+            <input type="tel" name="phone" placeholder="(555) 123-4567"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
+            <input type="email" name="email" placeholder="name@example.com"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="sm:col-span-2 flex items-center gap-2">
+            <button type="submit"
+                    class="px-4 py-2 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors">
+              Add Member
+            </button>
+            <button type="button" @click="showAddForm = false"
+                    class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+      {{end}}
+
+    </div>
+  </section>
+
+  {{/* ── Registration & Participation (approved events only) ── */}}
+  {{if eq $e.Status "approved"}}
+  {{$pc := .Data.ParticipantCounts}}
+  {{$isCountOnly := eq $e.RegistrationMode "count_only"}}
+  <section id="registration-section" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> Registration & Participation
+      </h2>
+      <div class="flex items-center gap-2">
+        {{if and (not $isCountOnly) (or $isAdmin (eq $e.UserID .CurrentUser.ID))}}
+        <a href="/admin/events/{{$e.ID}}/checkin"
+           class="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Check In
+        </a>
+        {{end}}
+        {{if and (not $isCountOnly) $isAdmin}}
+        <a href="/admin/events/{{$e.ID}}/participants"
+           class="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          Participants
+        </a>
+        {{end}}
+      </div>
+    </div>
+
+    {{if $isCountOnly}}
+    {{/* Count-Only Mode: manual count inputs */}}
+    <div class="grid sm:grid-cols-2 gap-6 mb-4">
+      <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <p class="text-xs font-medium text-blue-700 uppercase tracking-wide mb-1">Registered</p>
+        <p class="text-3xl font-bold text-blue-700">
+          {{if $e.RegistrationCount}}{{$e.RegistrationCount}}{{else}}&mdash;{{end}}
+        </p>
+      </div>
+      <div class="text-center p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+        <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide mb-1">Attended</p>
+        <p class="text-3xl font-bold text-indigo-700">
+          {{if $e.AttendanceCount}}{{$e.AttendanceCount}}{{else if $e.ParticipationCount}}{{$e.ParticipationCount}}{{else}}&mdash;{{end}}
+        </p>
+      </div>
+    </div>
+    {{if $isAdmin}}
+    <form method="POST" action="/admin/events/{{$e.ID}}/update-counts" class="grid sm:grid-cols-3 gap-3 items-end">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Registered Count</label>
+        <input type="number" name="registration_count" min="0" value="{{$e.RegistrationCount}}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Actual Attendance</label>
+        <input type="number" name="attendance_count" min="0" value="{{$e.AttendanceCount}}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-2.5 rounded-lg transition-colors w-full">Save</button>
+      </div>
+    </form>
+    {{end}}
+
+    {{else}}
+    {{/* Full Registration Mode: participants + check-in */}}
+    <div class="grid sm:grid-cols-3 gap-4">
+      <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <p class="text-xs font-medium text-blue-700 uppercase tracking-wide mb-1">Registered</p>
+        <p class="text-3xl font-bold text-blue-700">
+          {{if and $pc (gt $pc.Total 0)}}{{$pc.Total}}{{else if $e.RegistrationCount}}{{$e.RegistrationCount}}{{else}}&mdash;{{end}}
+        </p>
+      </div>
+      <div class="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+        <p class="text-xs font-medium text-green-700 uppercase tracking-wide mb-1">Checked In</p>
+        <p class="text-3xl font-bold text-green-700">
+          {{if and $pc (gt $pc.Total 0)}}{{$pc.CheckedIn}}{{else}}&mdash;{{end}}
+        </p>
+      </div>
+      <div class="text-center p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+        <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide mb-1">Actual Attendance</p>
+        <p class="text-3xl font-bold text-indigo-700">
+          {{if $e.AttendanceCount}}{{$e.AttendanceCount}}{{else if $e.ParticipationCount}}{{$e.ParticipationCount}}{{else}}&mdash;{{end}}
+        </p>
+      </div>
+    </div>
+    {{if $isAdmin}}
+    {{/* Manual attendance count for when not everyone is checked in */}}
+    <div class="mt-4 pt-4 border-t border-gray-100">
+      <form method="POST" action="/admin/events/{{$e.ID}}/update-counts" class="flex items-end gap-3 flex-wrap">
+        <div class="w-48">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Actual Attendance Count</label>
+          <input type="number" name="attendance_count" min="0" value="{{$e.AttendanceCount}}" placeholder="Override if needed"
+                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <input type="hidden" name="registration_count" value="{{$e.RegistrationCount}}">
+        <input type="hidden" name="participation_count" value="{{$e.ParticipationCount}}">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">Save</button>
+        <p class="text-xs text-gray-400">Use when not all attendees were individually checked in</p>
+      </form>
+    </div>
+    {{end}}
+    {{end}}
+
+    {{if $isAdmin}}
+    {{/* Registration Mode Toggle */}}
+    <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-700">Count Only Mode</p>
+        <p class="text-xs text-gray-500">No individual registration — just log totals</p>
+      </div>
+      <form method="POST" action="/admin/events/{{$e.ID}}/registration-mode">
+        <input type="hidden" name="registration_mode" value="{{if $isCountOnly}}full{{else}}count_only{{end}}">
+        <button type="submit"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none
+                  {{if $isCountOnly}}bg-blue-600{{else}}bg-gray-300{{end}}">
+          <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200
+            {{if $isCountOnly}}translate-x-6{{else}}translate-x-1{{end}}"></span>
+        </button>
+      </form>
+    </div>
+
+    {{/* Paid Event Toggle */}}
+    {{if not $isCountOnly}}
+    <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-700">Paid Event</p>
+        <p class="text-xs text-gray-500">Track payment status during check-in</p>
+      </div>
+      <form method="POST" action="/admin/events/{{$e.ID}}/toggle-paid-event">
+        <input type="hidden" name="is_paid_event" value="{{if $e.IsPaidEvent}}0{{else}}1{{end}}">
+        <button type="submit"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none
+                  {{if $e.IsPaidEvent}}bg-blue-600{{else}}bg-gray-300{{end}}">
+          <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200
+            {{if $e.IsPaidEvent}}translate-x-6{{else}}translate-x-1{{end}}"></span>
+        </button>
+      </form>
+    </div>
+
+    {{/* CSV Upload */}}
+    <div class="mt-4 pt-4 border-t border-gray-100">
+      <form method="POST" action="/admin/events/{{$e.ID}}/participants/import" enctype="multipart/form-data"
+            class="flex items-end gap-3 flex-wrap">
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Import Participants CSV</label>
+          <input type="file" name="csv_file" accept=".csv"
+                 class="block w-full text-sm text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50">
+        </div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">Upload</button>
+        <a href="/admin/events/{{$e.ID}}/participants/csv-template" class="text-xs text-blue-600 hover:text-blue-700 underline">Template</a>
+      </form>
+    </div>
+    {{end}}
+    {{end}}
+  </section>
+  {{end}}
+
   {{/* ── Budget & Expenses (approved events only) ── */}}
   {{if eq $e.Status "approved"}}
   {{$budget := .Data.Budget}}
   <section id="budget-section" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
-        <span>💰</span> Budget & Expenses
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Budget & Expenses
       </h2>
       {{if $budget}}
       <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold

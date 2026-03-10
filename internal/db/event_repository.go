@@ -32,19 +32,24 @@ func (r *EventRepository) Create(e *models.Event) error {
 	}
 	defer tx.Rollback()
 
+	// Default assigned_to to creator if not set
+	if e.AssignedToID == "" {
+		e.AssignedToID = e.UserID
+	}
+
 	if _, err := tx.Exec(`
 		INSERT INTO events (id, user_id, name, quarter, year, description, recurrence, recurrence_end_date,
 		                    event_date, start_time, end_time, image_path,
 		                    city, scope, scope_jamatkhana, venue_type, venue_jamatkhana, venue_address,
-		                    outcome, impact, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                    outcome, impact, status, assigned_to)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.ID, e.UserID,
 		nullIfEmpty(e.Name), nullIfEmpty(e.Quarter), nullIfZero(e.Year),
 		e.Description, e.Recurrence, nullIfEmpty(e.RecurrenceEndDate),
 		nullIfEmpty(e.EventDate), nullIfEmpty(e.StartTime), nullIfEmpty(e.EndTime), nullIfEmpty(e.ImagePath),
 		nullIfEmpty(e.City), e.Scope, nullIfEmpty(e.ScopeJamatkhana),
 		e.VenueType, nullIfEmpty(e.VenueJamatkhana), nullIfEmpty(e.VenueAddress),
-		e.Outcome, e.Impact, e.Status,
+		e.Outcome, e.Impact, e.Status, e.AssignedToID,
 	); err != nil {
 		return err
 	}
@@ -290,16 +295,24 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	var quarter, outcome, impact, adminComment, recurrence, recurrenceEndDate, eventDate sql.NullString
 	var startTime, endTime, imagePath sql.NullString
 	var city, scopeJK, venueJK, venueAddr sql.NullString
+	var assignedTo, assignedToName sql.NullString
 	var year sql.NullInt64
+	var registrationCount, participationCount, attendanceCount sql.NullInt64
+	var registrationMode sql.NullString
 
 	err := r.db.QueryRow(`
 		SELECT e.id, e.user_id, u.name, u.email,
 		       e.name, e.quarter, e.year, e.description, e.recurrence, e.recurrence_end_date, e.event_date,
 		       e.start_time, e.end_time, e.image_path,
 		       e.city, e.scope, e.scope_jamatkhana, e.venue_type, e.venue_jamatkhana, e.venue_address,
-		       e.outcome, e.impact, e.status, e.admin_comment, e.created_at, e.updated_at
+		       e.outcome, e.impact, e.status, e.admin_comment, e.created_at, e.updated_at,
+		       COALESCE(e.assigned_to, e.user_id), COALESCE(a.name, u.name),
+		       e.registration_count, e.participation_count,
+		       e.is_paid_event,
+		       e.registration_mode, e.attendance_count
 		FROM events e
 		JOIN users u ON e.user_id = u.id
+		LEFT JOIN users a ON e.assigned_to = a.id
 		WHERE e.id = ?`, id,
 	).Scan(
 		&e.ID, &e.UserID, &e.UserName, &e.UserEmail,
@@ -307,10 +320,16 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 		&startTime, &endTime, &imagePath,
 		&city, &e.Scope, &scopeJK, &e.VenueType, &venueJK, &venueAddr,
 		&outcome, &impact, &e.Status, &adminComment, &e.CreatedAt, &e.UpdatedAt,
+		&assignedTo, &assignedToName,
+		&registrationCount, &participationCount,
+		&e.IsPaidEvent,
+		&registrationMode, &attendanceCount,
 	)
 	if err != nil {
 		return nil, err
 	}
+	e.AssignedToID = assignedTo.String
+	e.AssignedToName = assignedToName.String
 	e.Quarter = quarter.String
 	e.Year = int(year.Int64)
 	e.Recurrence = recurrence.String
@@ -329,6 +348,13 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	e.Outcome = outcome.String
 	e.Impact = impact.String
 	e.AdminComment = adminComment.String
+	e.RegistrationCount = int(registrationCount.Int64)
+	e.ParticipationCount = int(participationCount.Int64)
+	e.RegistrationMode = registrationMode.String
+	if e.RegistrationMode == "" {
+		e.RegistrationMode = "full"
+	}
+	e.AttendanceCount = int(attendanceCount.Int64)
 
 	// Sub-tables
 	var fi, ff, fh, ft, fp sql.NullString
@@ -568,6 +594,12 @@ func (r *EventRepository) Approve(id, comment string) error {
 	return err
 }
 
+// UpdateAssignedTo changes who the event is assigned to.
+func (r *EventRepository) UpdateAssignedTo(eventID, userID string) error {
+	_, err := r.db.Exec(`UPDATE events SET assigned_to=?, updated_at=datetime('now') WHERE id=?`, userID, eventID)
+	return err
+}
+
 // Reject sets the event status to rejected with a required comment.
 func (r *EventRepository) Reject(id, comment string) error {
 	_, err := r.db.Exec(`
@@ -682,6 +714,119 @@ func (r *EventRepository) BulkCreate(events []*models.Event) error {
 	}
 
 	return tx.Commit()
+}
+
+// UpdateAttendance sets the registration and participation counts for an approved event.
+func (r *EventRepository) UpdateAttendance(id string, registration, participation int) error {
+	_, err := r.db.Exec(`
+		UPDATE events SET registration_count=?, participation_count=?, updated_at=datetime('now')
+		WHERE id=?`,
+		nullIfZero(registration), nullIfZero(participation), id,
+	)
+	return err
+}
+
+// DashboardStats returns aggregate event counts for the admin dashboard.
+func (r *EventRepository) DashboardStats() (*models.DashboardStats, error) {
+	s := &models.DashboardStats{}
+	err := r.db.QueryRow(`
+		SELECT
+			COUNT(*),
+			SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END),
+			SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END),
+			SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END),
+			COALESCE(SUM(CASE WHEN status='approved' THEN registration_count ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status='approved' THEN participation_count ELSE 0 END), 0)
+		FROM events`,
+	).Scan(&s.Total, &s.Pending, &s.Approved, &s.Rejected, &s.TotalRegistrations, &s.TotalParticipants)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// RecentEvents returns the N most recently created events.
+func (r *EventRepository) RecentEvents(limit int) ([]*models.Event, error) {
+	return r.listEvents(`ORDER BY e.created_at DESC LIMIT ?`, limit)
+}
+
+// UpcomingEvents returns the next N approved events with a future event_date.
+func (r *EventRepository) UpcomingEvents(limit int) ([]*models.Event, error) {
+	return r.listEvents(
+		`WHERE e.status = ? AND e.event_date IS NOT NULL AND e.event_date >= date('now') ORDER BY e.event_date ASC LIMIT ?`,
+		models.StatusApproved, limit,
+	)
+}
+
+// CountByQuarter returns event counts per quarter for a given year (approved only).
+func (r *EventRepository) CountByQuarter(year int) ([]models.QuarterCount, error) {
+	rows, err := r.db.Query(`
+		SELECT COALESCE(quarter, 'Unset'), COUNT(*)
+		FROM events
+		WHERE year = ? AND status = 'approved'
+		GROUP BY quarter
+		ORDER BY quarter`, year,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.QuarterCount
+	for rows.Next() {
+		var qc models.QuarterCount
+		if err := rows.Scan(&qc.Quarter, &qc.Count); err != nil {
+			return nil, err
+		}
+		result = append(result, qc)
+	}
+	return result, rows.Err()
+}
+
+// InitiativeEventCounts returns each initiative with how many events are tagged.
+func (r *EventRepository) InitiativeEventCounts() ([]models.InitiativeCount, error) {
+	rows, err := r.db.Query(`
+		SELECT si.id, si.name, COUNT(ei.event_id)
+		FROM strategic_initiatives si
+		LEFT JOIN event_initiatives ei ON si.id = ei.initiative_id
+		GROUP BY si.id
+		ORDER BY COUNT(ei.event_id) DESC, si.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.InitiativeCount
+	for rows.Next() {
+		var ic models.InitiativeCount
+		if err := rows.Scan(&ic.ID, &ic.Name, &ic.Count); err != nil {
+			return nil, err
+		}
+		result = append(result, ic)
+	}
+	return result, rows.Err()
+}
+
+// UpdateRegistrationMode sets the registration_mode for an event.
+func (r *EventRepository) UpdateRegistrationMode(id, mode string) error {
+	_, err := r.db.Exec(`UPDATE events SET registration_mode=?, updated_at=datetime('now') WHERE id=?`, mode, id)
+	return err
+}
+
+// UpdateAttendanceCount sets the manual attendance count for an event.
+func (r *EventRepository) UpdateAttendanceCount(id string, count int) error {
+	_, err := r.db.Exec(`UPDATE events SET attendance_count=?, updated_at=datetime('now') WHERE id=?`, nullIfZero(count), id)
+	return err
+}
+
+// UpdateIsPaidEvent toggles the is_paid_event flag on an event.
+func (r *EventRepository) UpdateIsPaidEvent(id string, isPaid bool) error {
+	v := 0
+	if isPaid {
+		v = 1
+	}
+	_, err := r.db.Exec(`UPDATE events SET is_paid_event=?, updated_at=datetime('now') WHERE id=?`, v, id)
+	return err
 }
 
 // helpers

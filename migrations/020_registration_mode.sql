@@ -1,0 +1,2 @@
+ALTER TABLE events ADD COLUMN registration_mode TEXT NOT NULL DEFAULT 'full';
+ALTER TABLE events ADD COLUMN attendance_count INTEGER DEFAULT NULL;

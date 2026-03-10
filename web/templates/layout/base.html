@@ -5,11 +5,158 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{template "title" .}} — IPN Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    // Prevent FOUC: apply dark class immediately from localStorage
+    if (localStorage.getItem('darkMode') === 'true' ||
+        (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+    // Alpine.js dark mode store
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('darkMode', {
+        on: document.documentElement.classList.contains('dark'),
+        toggle() {
+          this.on = !this.on;
+          localStorage.setItem('darkMode', this.on);
+          document.documentElement.classList.toggle('dark', this.on);
+        }
+      });
+    });
+  </script>
   <style>
     [x-cloak] { display: none !important; }
+
+    /* ── Modern UI ── */
+    body {
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Dark mode overrides ── */
+    /* Page backgrounds */
+    html.dark { background-color: #0f172a; }
+    html.dark .bg-gray-50 { background-color: #0f172a; }
+    html.dark .bg-gray-100 { background-color: #1e293b; }
+    html.dark .bg-white { background-color: #1e293b; }
+
+    /* Text colors — gray scale */
+    html.dark .text-gray-900 { color: #f1f5f9; }
+    html.dark .text-gray-800 { color: #e2e8f0; }
+    html.dark .text-gray-700 { color: #cbd5e1; }
+    html.dark .text-gray-600 { color: #94a3b8; }
+    html.dark .text-gray-500 { color: #94a3b8; }
+    html.dark .text-gray-400 { color: #64748b; }
+    html.dark .text-gray-300 { color: #475569; }
+
+    /* Borders */
+    html.dark .border-gray-100 { border-color: #1e293b; }
+    html.dark .border-gray-200 { border-color: #334155; }
+    html.dark .border-gray-300 { border-color: #475569; }
+
+    /* Form inputs */
+    html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+    html.dark textarea,
+    html.dark select {
+      background-color: #0f172a;
+      border-color: #475569;
+      color: #e2e8f0;
+    }
+    html.dark input:focus, html.dark textarea:focus, html.dark select:focus {
+      border-color: #3b82f6;
+    }
+    html.dark input::placeholder, html.dark textarea::placeholder {
+      color: #64748b;
+    }
+    html.dark option {
+      background-color: #1e293b;
+      color: #e2e8f0;
+    }
+
+    /* Colored backgrounds — semi-transparent for dark mode */
+    html.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.1); }
+    html.dark .bg-green-100 { background-color: rgba(34, 197, 94, 0.15); }
+    html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.1); }
+    html.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.15); }
+    html.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.1); }
+    html.dark .bg-yellow-100 { background-color: rgba(234, 179, 8, 0.15); }
+    html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1); }
+    html.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.15); }
+    html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.1); }
+    html.dark .bg-indigo-100 { background-color: rgba(99, 102, 241, 0.15); }
+    html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.1); }
+    html.dark .bg-purple-100 { background-color: rgba(168, 85, 247, 0.15); }
+    html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1); }
+    html.dark .bg-orange-100 { background-color: rgba(249, 115, 22, 0.15); }
+
+    /* Colored text — stay vivid in dark */
+    html.dark .text-green-800, html.dark .text-green-700 { color: #4ade80; }
+    html.dark .text-green-600 { color: #22c55e; }
+    html.dark .text-red-800, html.dark .text-red-700 { color: #f87171; }
+    html.dark .text-red-600 { color: #ef4444; }
+    html.dark .text-yellow-800, html.dark .text-yellow-700 { color: #fbbf24; }
+    html.dark .text-yellow-600 { color: #eab308; }
+    html.dark .text-blue-800, html.dark .text-blue-700 { color: #60a5fa; }
+    html.dark .text-blue-600 { color: #3b82f6; }
+    html.dark .text-indigo-800, html.dark .text-indigo-700 { color: #818cf8; }
+    html.dark .text-indigo-600 { color: #6366f1; }
+    html.dark .text-purple-800, html.dark .text-purple-700 { color: #a78bfa; }
+    html.dark .text-orange-800, html.dark .text-orange-700 { color: #fb923c; }
+
+    /* Colored borders */
+    html.dark .border-green-200 { border-color: rgba(34, 197, 94, 0.3); }
+    html.dark .border-green-300 { border-color: rgba(34, 197, 94, 0.4); }
+    html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
+    html.dark .border-red-300 { border-color: rgba(239, 68, 68, 0.4); }
+    html.dark .border-yellow-200 { border-color: rgba(234, 179, 8, 0.3); }
+    html.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3); }
+    html.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3); }
+    html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
+
+    /* Hover states */
+    html.dark .hover\:bg-gray-50:hover { background-color: #334155; }
+    html.dark .hover\:bg-gray-100:hover { background-color: #334155; }
+    html.dark .hover\:bg-red-100:hover { background-color: rgba(239, 68, 68, 0.2); }
+
+    /* Shadows — subtler in dark */
+    html.dark .shadow-sm { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4); }
+    html.dark .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5); }
+    html.dark .shadow-lg { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5); }
+    html.dark .shadow-2xl { box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6); }
+
+    /* Table row hover on dark */
+    html.dark .bg-gray-50\/50 { background-color: rgba(30, 41, 59, 0.5); }
+    html.dark thead .bg-gray-50 { background-color: #172033; }
+    html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
+    html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
+
+    /* White text and bg in dark - for things like buttons that should stay white */
+    html.dark .text-white { color: #ffffff; }
+    html.dark .bg-blue-600 { background-color: #2563eb; }
+    html.dark .bg-blue-700 { background-color: #1d4ed8; }
+    html.dark .bg-indigo-600 { background-color: #4f46e5; }
+    html.dark .bg-indigo-700 { background-color: #4338ca; }
+    html.dark .bg-green-600 { background-color: #16a34a; }
+    html.dark .bg-red-600 { background-color: #dc2626; }
+    html.dark .bg-yellow-500 { background-color: #eab308; }
   </style>
 </head>
 <body class="h-full flex flex-col">

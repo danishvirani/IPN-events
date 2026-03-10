@@ -1,0 +1,2 @@
+ALTER TABLE events ADD COLUMN registration_count INTEGER DEFAULT NULL;
+ALTER TABLE events ADD COLUMN participation_count INTEGER DEFAULT NULL;

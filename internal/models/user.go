@@ -18,6 +18,7 @@ type User struct {
 	Role         string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	LastLoginAt  *time.Time
 }
 
 func (u *User) IsAdmin() bool {

@@ -120,6 +120,19 @@ func templateFuncs() template.FuncMap {
 			return fmt.Sprintf("$%s.%02d", s, remainder)
 		},
 		"sub": func(a, b int) int { return a - b },
+		"mul": func(a, b int) int { return a * b },
+		"div": func(a, b int) int {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"pct": func(a, b int) int {
+			if b == 0 {
+				return 0
+			}
+			return (a * 100) / b
+		},
 		"dollarsToCents": func(d float64) int { return int(math.Round(d * 100)) },
 		"incomeCategories":  models.IncomeCategories,
 		"expenseCategories": models.ExpenseCategories,
