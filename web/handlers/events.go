@@ -153,8 +153,8 @@ func (h *EventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Team members can only view their own events
-	if !user.IsAdmin() && e.UserID != user.ID {
+	// Members can only view events they submitted or are assigned to
+	if !user.IsAdmin() && e.UserID != user.ID && e.AssignedToID != user.ID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -199,7 +199,7 @@ func (h *EventHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if e.UserID != user.ID {
+	if e.UserID != user.ID && e.AssignedToID != user.ID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -230,7 +230,7 @@ func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if e.UserID != user.ID {
+	if e.UserID != user.ID && e.AssignedToID != user.ID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -394,7 +394,7 @@ func parseEventForm(r *http.Request) *models.Event {
 	return e
 }
 
-// AddComment lets a team member post a comment on their own event.
+// AddComment lets a team member post a comment on their own or assigned event.
 func (h *EventHandler) AddComment(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	text := strings.TrimSpace(r.FormValue("comment"))
@@ -405,7 +405,7 @@ func (h *EventHandler) AddComment(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if e.UserID != user.ID {
+	if e.UserID != user.ID && e.AssignedToID != user.ID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
