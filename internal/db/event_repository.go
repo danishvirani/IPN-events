@@ -426,9 +426,9 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 	return e, nil
 }
 
-// ListByUser returns all events for a specific user, newest first.
+// ListByUser returns all events submitted by or assigned to a user, newest first.
 func (r *EventRepository) ListByUser(userID string) ([]*models.Event, error) {
-	return r.listEvents(`WHERE e.user_id = ? ORDER BY e.created_at DESC`, userID)
+	return r.listEvents(`WHERE (e.user_id = ? OR e.assigned_to = ?) ORDER BY e.created_at DESC`, userID, userID)
 }
 
 // ListAll returns all events for admin view, newest first.
@@ -614,8 +614,8 @@ func (r *EventRepository) CountByStatus(userID string) (pending, approved, rejec
 	query := `SELECT status, COUNT(*) FROM events`
 	var args []any
 	if userID != "" {
-		query += ` WHERE user_id = ?`
-		args = append(args, userID)
+		query += ` WHERE (user_id = ? OR assigned_to = ?)`
+		args = append(args, userID, userID)
 	}
 	query += ` GROUP BY status`
 
