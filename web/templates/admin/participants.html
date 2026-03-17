@@ -38,7 +38,7 @@
 </div>
 
 {{/* ── CSV Import ── */}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+<div class="card-static p-5 mb-6">
   <h2 class="text-sm font-semibold text-gray-700 mb-3">Import Participants</h2>
   <form method="POST" action="/admin/events/{{$e.ID}}/participants/import" enctype="multipart/form-data" class="flex items-end gap-3 flex-wrap">
     <div class="flex-1 min-w-[200px]">
@@ -67,7 +67,7 @@
 
 {{/* ── Table ── */}}
 {{if $participants}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<div class="card-static overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
@@ -117,7 +117,7 @@
   </div>
 </div>
 {{else}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+<div class="card-static p-8 text-center">
   <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
   <p class="text-gray-500 text-sm">{{if $search}}No participants match your search.{{else}}No participants registered yet. Upload a CSV to add participants.{{end}}</p>
 </div>

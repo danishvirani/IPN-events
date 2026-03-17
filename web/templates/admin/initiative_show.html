@@ -31,14 +31,14 @@
 <div class="space-y-6">
 
   {{/* Objective */}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-2">Objective</h2>
     <p class="text-sm text-gray-700 whitespace-pre-wrap">{{$init.Objective}}</p>
     <p class="text-xs text-gray-400 mt-4">Created {{$init.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}} &middot; Updated {{$init.UpdatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</p>
   </section>
 
   {{/* Documents */}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-base font-semibold text-gray-700">Supporting Documents</h2>
       <span class="text-xs text-gray-400">{{len $init.Documents}} file{{if ne (len $init.Documents) 1}}s{{end}}</span>
@@ -87,7 +87,7 @@
   </section>
 
   {{/* ── Activity Log ── */}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-4">Activity Log</h2>
 
     {{if $updates}}

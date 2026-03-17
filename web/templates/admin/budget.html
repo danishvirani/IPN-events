@@ -24,16 +24,16 @@
 
 {{/* Summary Cards */}}
 <div class="grid sm:grid-cols-3 gap-4 mb-6">
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card-static p-5">
     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Income</p>
     <p class="text-2xl font-bold text-green-600">{{formatMoney $d.TotalIncome}}</p>
     <p class="text-xs text-gray-400 mt-1">{{$d.EventCount}} approved events</p>
   </div>
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card-static p-5">
     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Expenses</p>
     <p class="text-2xl font-bold text-red-600">{{formatMoney $d.TotalExpense}}</p>
   </div>
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card-static p-5">
     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Net Balance</p>
     <p class="text-2xl font-bold {{if ge $d.Balance 0}}text-green-600{{else}}text-red-600{{end}}">
       {{if ge $d.Balance 0}}+{{end}}{{formatMoney $d.Balance}}
@@ -46,7 +46,7 @@
 
 {{/* Events Table */}}
 {{if $d.Rows}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<div class="card-static overflow-hidden">
   <table class="w-full text-sm">
     <thead class="bg-gray-50 border-b border-gray-200">
       <tr>

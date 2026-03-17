@@ -5,13 +5,13 @@
 {{$isAdmin := .CurrentUser.IsAdmin}}
 
 {{/* ── Header ── */}}
-<div class="mb-6 flex items-start justify-between">
+<div class="mb-8 flex items-start justify-between animate-in">
   <div>
-    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <h1 class="text-2xl font-bold heading-gradient">Dashboard</h1>
     <p class="text-gray-500 text-sm mt-1">IPN Event management overview</p>
   </div>
   {{if $isAdmin}}
-  <a href="/admin/users/new" class="hidden sm:inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+  <a href="/admin/users/new" class="hidden sm:inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg btn-glow">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
     Invite Member
   </a>
@@ -22,7 +22,7 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
   {{/* Total Events with status breakdown */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5 animate-in delay-1">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Total Events</p>
       <div class="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
@@ -38,7 +38,7 @@
   </div>
 
   {{/* Registrations */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5 animate-in delay-2">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Registrations</p>
       <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -50,7 +50,7 @@
   </div>
 
   {{/* Participants */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5 animate-in delay-3">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Participants</p>
       <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
@@ -62,7 +62,7 @@
   </div>
 
   {{/* Budget */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5 animate-in delay-4">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Budget ({{$d.CurrentYear}})</p>
       <div class="w-9 h-9 rounded-lg {{if ge $d.BudgetBalance 0}}bg-green-50{{else}}bg-red-50{{end}} flex items-center justify-center">
@@ -99,10 +99,10 @@
 {{end}}
 
 {{/* ── Row 3: Status Donut + Events by Quarter ── */}}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 animate-in delay-5">
 
   {{/* Event Status Distribution — CSS donut chart */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5">
     <h2 class="text-sm font-semibold text-gray-900 mb-4">Event Status Distribution</h2>
     {{if gt $d.Stats.Total 0}}
     <div class="flex items-center gap-6"
@@ -123,7 +123,7 @@
       {{/* Donut chart */}}
       <div class="relative w-32 h-32 flex-shrink-0">
         <div class="w-32 h-32 rounded-full" :style="'background: ' + gradient"></div>
-        <div class="absolute inset-3 bg-white rounded-full flex items-center justify-center">
+        <div class="absolute inset-3 bg-gray-50 rounded-full flex items-center justify-center">
           <span class="text-lg font-bold text-gray-900">{{$d.Stats.Total}}</span>
         </div>
       </div>
@@ -167,7 +167,7 @@
   </div>
 
   {{/* Events by Quarter — Horizontal bar chart */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-sm font-semibold text-gray-900">Events by Quarter ({{$d.CurrentYear}})</h2>
       <a href="/admin/events" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">View all</a>
@@ -194,10 +194,10 @@
 </div>
 
 {{/* ── Row 4: Recent Submissions + Upcoming Events ── */}}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 animate-in delay-6">
 
   {{/* Recent Submissions */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="card overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
       <h2 class="text-sm font-semibold text-gray-900">Recent Submissions</h2>
       <a href="/admin/events" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">View all</a>
@@ -236,7 +236,7 @@
   </div>
 
   {{/* Upcoming Events */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <div class="card overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
       <h2 class="text-sm font-semibold text-gray-900">Upcoming Events</h2>
       <a href="/admin/calendar" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">Calendar</a>
@@ -271,11 +271,11 @@
 </div>
 
 {{/* ── Row 5: Initiative Coverage + Team ── */}}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 animate-in delay-7">
 
   {{/* Initiative Coverage — Progress bars */}}
   {{if $d.InitiativeCounts}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-sm font-semibold text-gray-900">Initiative Coverage</h2>
       <a href="/admin/initiatives" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">Manage</a>
@@ -298,7 +298,7 @@
   {{end}}
 
   {{/* Quick Stats & Team */}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+  <div class="card p-5">
     <h2 class="text-sm font-semibold text-gray-900 mb-4">Quick Stats</h2>
     <div class="grid grid-cols-2 gap-4">
       <a href="/admin/users" class="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors text-center">
@@ -334,7 +334,7 @@
 </div>
 
 {{/* ── Row 6: Quick Actions ── */}}
-<div class="flex gap-3 flex-wrap">
+<div class="flex gap-3 flex-wrap animate-in delay-8">
   <a href="/admin/events"
      class="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>

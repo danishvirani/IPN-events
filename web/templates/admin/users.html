@@ -17,7 +17,7 @@
 {{if .Data.Users}}
 <div class="space-y-3">
   {{range .Data.Users}}
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5 hover:border-gray-300 transition-colors">
+  <div class="card-static p-4 sm:p-5 hover:border-gray-300 transition-colors">
 
     {{/* Top row: Avatar + Name/Email + Role selector */}}
     <div class="flex items-start gap-3 sm:gap-4">
@@ -139,7 +139,7 @@
   <h2 class="text-lg font-semibold text-gray-900 mb-3">Pending Invitations</h2>
   <div class="space-y-3">
     {{range .Data.Invites}}
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
+    <div class="card-static p-4 sm:p-5">
       <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
 
         {{/* Icon */}}

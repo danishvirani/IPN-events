@@ -116,7 +116,7 @@
 <div class="space-y-6">
 
   {{/* Basic Info */}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-3">Overview</h2>
     <p class="text-sm text-gray-700 whitespace-pre-wrap">{{$e.Description}}</p>
 
@@ -189,7 +189,7 @@
   </section>
 
   {{/* Logic Model */}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
+  <section class="card-static p-6 space-y-6">
     <h2 class="text-base font-semibold text-gray-700 border-b pb-2">Logic Model</h2>
 
     <div>
@@ -244,7 +244,7 @@
 
   {{/* Support Requests */}}
   {{if $e.SupportRequests}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-3">Support Requests</h2>
     <div class="space-y-3">
       {{range $e.SupportRequests}}
@@ -281,7 +281,7 @@
 
     {{/* Toggle bar — compact when off, shows nothing else */}}
     {{if $canManageTeam}}
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between cursor-pointer select-none"
+    <div class="card-static px-6 py-4 flex items-center justify-between cursor-pointer select-none"
          :class="open ? 'rounded-b-none border-b-0' : ''"
          @click="open = !open">
       <div class="flex items-center gap-3">
@@ -302,7 +302,7 @@
     </div>
     {{else if $hasTeam}}
     {{/* Non-owner, non-admin: only show header if team exists */}}
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-4 rounded-b-none border-b-0">
+    <div class="card-static px-6 py-4 rounded-b-none border-b-0">
       <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg> Project Team
         <span class="text-xs font-normal text-gray-400">({{len $teamMembers}})</span>
@@ -430,7 +430,7 @@
   {{if eq $e.Status "approved"}}
   {{$pc := .Data.ParticipantCounts}}
   {{$isCountOnly := eq $e.RegistrationMode "count_only"}}
-  <section id="registration-section" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section id="registration-section" class="card-static p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> Registration & Participation
@@ -584,7 +584,7 @@
   {{/* ── Budget & Expenses (approved events only) ── */}}
   {{if eq $e.Status "approved"}}
   {{$budget := .Data.Budget}}
-  <section id="budget-section" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section id="budget-section" class="card-static p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Budget & Expenses
@@ -826,7 +826,7 @@
   {{if eq $e.Status "approved"}}
   {{$checklist := .Data.Checklist}}
   {{if $checklist}}
-  <section id="checklist-section" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section id="checklist-section" class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2 mb-4">
       <span>☑️</span> Event Checklist
     </h2>
@@ -911,7 +911,7 @@
   {{end}}
 
   {{/* ── Activity Log / Chat Thread ── */}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-4">Activity Log</h2>
     {{if $comments}}
     <div class="space-y-4 mb-6">
@@ -964,7 +964,7 @@
 
   {{/* Admin Review Panel */}}
   {{if $isAdmin}}
-  <section class="bg-white rounded-xl border border-blue-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-base font-semibold text-gray-700">Review</h2>
       {{if eq $e.Status "pending"}}
@@ -988,7 +988,7 @@
 
   {{/* Admin: Set Event Date — only for approved events */}}
   {{if eq $e.Status "approved"}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-1">Event Date</h2>
     <p class="text-sm text-gray-500 mb-4">Set or update the specific date for this event. Leave blank to clear.</p>
     <form method="POST" action="/admin/events/{{$e.ID}}/set-date" class="grid sm:grid-cols-2 gap-3">
@@ -1027,7 +1027,7 @@
 
   {{/* Mark Complete toggle (admin only) */}}
   {{if $isAdmin}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <div class="flex items-center justify-between">
       <div>
         <h2 class="text-base font-semibold text-gray-700">Event Status</h2>
@@ -1051,7 +1051,7 @@
   {{end}}
 
   {{/* Photo Gallery */}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+  <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-4 flex items-center gap-2">
       <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
       Photo Gallery

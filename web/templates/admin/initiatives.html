@@ -16,7 +16,7 @@
 {{if .Data}}
 <div class="space-y-4">
   {{range .Data}}
-  <a href="/admin/initiatives/{{.ID}}" class="block bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:border-blue-300 hover:shadow transition-all">
+  <a href="/admin/initiatives/{{.ID}}" class="block card-static p-5 hover:border-blue-300 hover:shadow transition-all">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
         <h3 class="text-base font-semibold text-gray-900 truncate">{{.Name}}</h3>
@@ -37,7 +37,7 @@
   {{end}}
 </div>
 {{else}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+<div class="card-static p-8 text-center">
   <p class="text-gray-400 text-sm">No strategic initiatives yet.</p>
   <a href="/admin/initiatives/new" class="inline-block mt-3 text-sm text-blue-700 hover:text-blue-900 font-medium">Create your first initiative &rarr;</a>
 </div>

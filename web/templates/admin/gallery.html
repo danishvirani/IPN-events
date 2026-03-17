@@ -4,7 +4,7 @@
 {{$groups := .Data}}
 
 <div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-900">Photo Gallery</h1>
+  <h1 class="text-2xl font-bold heading-gradient">Photo Gallery</h1>
   <p class="text-sm text-gray-500 mt-1">Event photos across all events</p>
 </div>
 
@@ -12,7 +12,7 @@
 <div class="space-y-8">
 
   {{range $g := $groups}}
-  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6" x-data="{ lightbox: false, current: 0 }">
+  <section class="card-static p-6" x-data="{ lightbox: false, current: 0 }">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
         {{$g.EventName}}
@@ -56,7 +56,7 @@
 
 </div>
 {{else}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+<div class="card-static p-12 text-center">
   <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
   <h3 class="mt-2 text-sm font-semibold text-gray-900">No photos yet</h3>
   <p class="mt-1 text-sm text-gray-500">Photos will appear here as they are uploaded to events.</p>

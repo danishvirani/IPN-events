@@ -12,7 +12,7 @@
 </div>
 
 {{/* Search & Filter Bar */}}
-<div class="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+<div class="mb-6 card-static p-4">
   <form method="GET" action="/admin/events" class="flex flex-wrap gap-3 items-end">
     {{/* Preserve status filter */}}
     {{if .Data.StatusFilter}}
@@ -79,7 +79,7 @@
 {{if $events}}
 <div class="space-y-3">
   {{range $events}}
-  <a href="/admin/events/{{.ID}}" class="block bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:border-indigo-300 hover:shadow transition-all">
+  <a href="/admin/events/{{.ID}}" class="block card-static p-4 hover:border-indigo-300 hover:shadow transition-all">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
         <p class="font-semibold text-gray-900">{{.Name}}</p>

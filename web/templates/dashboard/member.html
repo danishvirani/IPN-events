@@ -4,12 +4,12 @@
 {{$d := .Data}}
 
 {{/* ── Header ── */}}
-<div class="mb-6 flex items-start justify-between">
+<div class="mb-8 flex items-start justify-between animate-in">
   <div>
-    <h1 class="text-2xl font-bold text-gray-900">My Dashboard</h1>
+    <h1 class="text-2xl font-bold heading-gradient">My Dashboard</h1>
     <p class="text-gray-500 text-sm mt-1">Track your event submissions</p>
   </div>
-  <a href="/events/new" class="inline-flex items-center gap-1.5 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+  <a href="/events/new" class="inline-flex items-center gap-1.5 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg btn-glow">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
     New Event
   </a>
@@ -17,7 +17,7 @@
 
 {{/* ── Metric Cards ── */}}
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-  <div class="bg-white rounded-xl border border-yellow-200 shadow-sm p-5">
+  <div class="card p-5 animate-in delay-1" style="border-color: rgba(234,179,8,0.3)">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Pending</p>
       <div class="w-9 h-9 rounded-lg bg-yellow-50 flex items-center justify-center">
@@ -27,7 +27,7 @@
     <p class="text-3xl font-bold text-yellow-600">{{$d.Pending}}</p>
     <p class="text-xs text-gray-400 mt-2">Awaiting review</p>
   </div>
-  <div class="bg-white rounded-xl border border-green-200 shadow-sm p-5">
+  <div class="card p-5 animate-in delay-2" style="border-color: rgba(34,197,94,0.3)">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Approved</p>
       <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
@@ -37,7 +37,7 @@
     <p class="text-3xl font-bold text-green-600">{{$d.Approved}}</p>
     <p class="text-xs text-gray-400 mt-2">Events approved</p>
   </div>
-  <div class="bg-white rounded-xl border border-red-200 shadow-sm p-5">
+  <div class="card p-5 animate-in delay-3" style="border-color: rgba(239,68,68,0.3)">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Rejected</p>
       <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center">
@@ -52,7 +52,7 @@
 {{/* ── Status Progress Bar ── */}}
 {{$total := add (add $d.Pending $d.Approved) $d.Rejected}}
 {{if gt $total 0}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+<div class="card p-5 mb-6 animate-in delay-4">
   <div class="flex items-center justify-between mb-2">
     <h2 class="text-sm font-semibold text-gray-900">Approval Rate</h2>
     <span class="text-sm font-semibold text-green-600">{{pct $d.Approved $total}}%</span>
@@ -71,7 +71,7 @@
 {{end}}
 
 {{/* ── My Recent Events ── */}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+<div class="card overflow-hidden mb-6 animate-in delay-5">
   <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
     <h2 class="text-sm font-semibold text-gray-900">My Recent Events</h2>
     <a href="/events" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">View all</a>
