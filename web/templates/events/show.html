@@ -19,7 +19,7 @@
     <div class="flex items-center gap-3 flex-wrap">
       <h1 class="text-2xl font-bold text-gray-900">{{$e.Name}}</h1>
       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium capitalize {{$e.StatusBadgeClass}}">
-        {{$e.Status}}
+        {{$e.DisplayStatus}}
       </span>
     </div>
     {{if or $e.Quarter $e.Year}}
@@ -94,6 +94,25 @@
 </div>
 {{end}}
 
+{{$photos := .Data.Photos}}
+{{$canUpload := or $isAdmin (eq $.CurrentUser.ID $e.UserID) (eq $e.AssignedToID $.CurrentUser.ID)}}
+<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'details' }">
+
+<!-- Tab bar -->
+<div class="mb-6 border-b border-gray-200">
+  <nav class="flex gap-6" aria-label="Tabs">
+    <button @click="tab='details'" :class="tab==='details' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="pb-3 border-b-2 text-sm font-medium transition-colors">
+      Details
+    </button>
+    <button @click="tab='post-event'" :class="tab==='post-event' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="pb-3 border-b-2 text-sm font-medium transition-colors flex items-center gap-1.5">
+      Post-Event
+      {{if $photos}}<span class="bg-indigo-100 text-indigo-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">{{len $photos}}</span>{{end}}
+    </button>
+  </nav>
+</div>
+
+<!-- Details Tab -->
+<div x-show="tab==='details'" x-cloak>
 <div class="space-y-6">
 
   {{/* Basic Info */}}
@@ -1000,4 +1019,112 @@
   {{end}}
 
 </div>
+</div><!-- end Details Tab -->
+
+<!-- Post-Event Tab -->
+<div x-show="tab==='post-event'" x-cloak>
+<div class="space-y-6">
+
+  {{/* Mark Complete toggle (admin only) */}}
+  {{if $isAdmin}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-base font-semibold text-gray-700">Event Status</h2>
+        <p class="text-sm text-gray-500 mt-0.5">Mark this event as completed when it's finished.</p>
+      </div>
+      <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/complete{{else}}/events/{{$e.ID}}/complete{{end}}">
+        <button type="submit"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                  {{if $e.Completed}}bg-blue-100 text-blue-800 hover:bg-blue-200{{else}}bg-gray-100 text-gray-600 hover:bg-gray-200{{end}}">
+          {{if $e.Completed}}
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Completed
+          {{else}}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+            Mark Complete
+          {{end}}
+        </button>
+      </form>
+    </div>
+  </section>
+  {{end}}
+
+  {{/* Photo Gallery */}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <h2 class="text-base font-semibold text-gray-700 mb-4 flex items-center gap-2">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      Photo Gallery
+      {{if $photos}}<span class="text-sm font-normal text-gray-400">({{len $photos}} photo{{if ne (len $photos) 1}}s{{end}})</span>{{end}}
+    </h2>
+
+    {{if $photos}}
+    <div x-data="{ lightbox: false, current: 0 }">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {{range $i, $p := $photos}}
+        <div class="relative group cursor-pointer" @click="lightbox=true; current={{$i}}">
+          <img src="/uploads/{{$p.Thumbnail}}" alt="{{$p.Caption}}"
+               class="w-full h-48 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          {{if and $canUpload (not false)}}
+          <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/photos/{{$p.ID}}/delete{{else}}/events/{{$e.ID}}/photos/{{$p.ID}}/delete{{end}}"
+                class="absolute top-2 right-2 hidden group-hover:block"
+                onsubmit="return confirm('Delete this photo?')" @click.stop>
+            <button type="submit" class="bg-red-600/80 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-lg backdrop-blur-sm">
+              &times;
+            </button>
+          </form>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+
+      <!-- Lightbox -->
+      <template x-if="lightbox">
+        <div class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+             @click.self="lightbox=false" @keydown.escape.window="lightbox=false"
+             @keydown.left.window="current = (current - 1 + {{len $photos}}) % {{len $photos}}"
+             @keydown.right.window="current = (current + 1) % {{len $photos}}">
+          <button @click="lightbox=false" class="absolute top-4 right-4 text-white/80 hover:text-white text-3xl z-10 w-10 h-10 flex items-center justify-center">&times;</button>
+          {{if gt (len $photos) 1}}
+          <button @click="current = (current - 1 + {{len $photos}}) % {{len $photos}}"
+                  class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl z-10 w-12 h-12 flex items-center justify-center">&#8249;</button>
+          <button @click="current = (current + 1) % {{len $photos}}"
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl z-10 w-12 h-12 flex items-center justify-center">&#8250;</button>
+          {{end}}
+          {{range $i, $p := $photos}}
+          <img x-show="current === {{$i}}" src="/uploads/{{$p.Filename}}" alt="{{$p.Caption}}"
+               class="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl" x-transition>
+          {{end}}
+          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
+            <span x-text="current + 1"></span> / {{len $photos}}
+          </div>
+        </div>
+      </template>
+    </div>
+    {{else}}
+    <p class="text-sm text-gray-400 italic">No photos uploaded yet.</p>
+    {{end}}
+
+    {{/* Upload form */}}
+    {{if $canUpload}}
+    <div class="mt-6 pt-6 border-t border-gray-100">
+      <form action="{{if $isAdmin}}/admin/events/{{$e.ID}}/photos{{else}}/events/{{$e.ID}}/photos{{end}}" method="POST" enctype="multipart/form-data" class="space-y-3">
+        <label class="block text-sm font-medium text-gray-700">Add Photos</label>
+        <input type="file" name="photos" multiple accept="image/jpeg,image/png"
+               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer">
+        <p class="text-xs text-gray-400">JPG or PNG, up to 10 MB each. Photos are automatically compressed.</p>
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+          Upload Photos
+        </button>
+      </form>
+    </div>
+    {{end}}
+  </section>
+
+</div>
+</div><!-- end Post-Event Tab -->
+
+</div><!-- end x-data tabs -->
 {{end}}

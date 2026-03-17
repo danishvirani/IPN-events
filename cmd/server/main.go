@@ -12,6 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"path/filepath"
+
 	"ipn-events/internal/auth"
 	"ipn-events/internal/config"
 	"ipn-events/internal/db"
@@ -23,9 +25,12 @@ import (
 func main() {
 	cfg := config.Load()
 
-	// Ensure upload directory exists
+	// Ensure upload directory and photo subdirs exist
 	if err := os.MkdirAll(cfg.UploadDir, 0755); err != nil {
 		log.Fatalf("cannot create upload dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(cfg.UploadDir, "photos", "thumbs"), 0755); err != nil {
+		log.Fatalf("cannot create photo dirs: %v", err)
 	}
 
 	// Database
@@ -84,9 +89,11 @@ func main() {
 	teamRepo               := db.NewTeamRepository(sqlDB)
 	participantRepo        := db.NewParticipantRepository(sqlDB)
 	initUpdateRepo         := db.NewInitiativeUpdateRepository(sqlDB)
+	photoRepo              := db.NewPhotoRepository(sqlDB)
 	dashboardHandler       := handlers.NewDashboardHandler(eventRepo, userRepo, budgetRepo, initiativeRepo)
-	eventHandler           := handlers.NewEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, teamRepo, participantRepo, cfg.UploadDir)
-	adminEventHandler      := handlers.NewAdminEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, teamRepo, userRepo, participantRepo, emailSvc, cfg.UploadDir)
+	eventHandler           := handlers.NewEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, teamRepo, participantRepo, photoRepo, cfg.UploadDir)
+	adminEventHandler      := handlers.NewAdminEventHandler(eventRepo, commentRepo, initiativeRepo, budgetRepo, checklistRepo, teamRepo, userRepo, participantRepo, photoRepo, emailSvc, cfg.UploadDir)
+	photoHandler           := handlers.NewPhotoHandler(eventRepo, photoRepo, cfg.UploadDir)
 	budgetHandler          := handlers.NewBudgetHandler(eventRepo, budgetRepo)
 	checklistHandler       := handlers.NewChecklistHandler(eventRepo, checklistRepo)
 	teamHandler            := handlers.NewTeamHandler(eventRepo, teamRepo, userRepo)
@@ -143,6 +150,9 @@ func main() {
 		r.Get("/events/{id}/edit", eventHandler.Edit)
 		r.Post("/events/{id}",     eventHandler.Update)
 		r.Post("/events/{id}/comments", eventHandler.AddComment)
+		r.Post("/events/{id}/photos",                photoHandler.Upload)
+		r.Post("/events/{id}/photos/{photoId}/delete", photoHandler.Delete)
+		r.Post("/events/{id}/complete",              photoHandler.ToggleComplete)
 		r.Post("/events/{id}/team/add",              teamHandler.AddMember)
 		r.Post("/events/{id}/team/{mid}/delete",     teamHandler.DeleteMember)
 
@@ -162,6 +172,7 @@ func main() {
 			r.Use(webmw.RequireAdminOrViewer)
 
 			r.Get("/admin/dashboard",          dashboardHandler.AdminDashboard)
+			r.Get("/admin/gallery",            photoHandler.Gallery)
 			r.Get("/admin/calendar",           adminEventHandler.Calendar)
 			r.Get("/admin/roadmap",            adminEventHandler.Roadmap)
 			r.Get("/admin/roadmap/pdf",        adminEventHandler.RoadmapPDF)
@@ -195,6 +206,9 @@ func main() {
 			r.Post("/admin/events/{id}/team/{mid}/delete",         teamHandler.DeleteMember)
 			r.Post("/admin/events/{id}/assign",                    teamHandler.AssignTo)
 			r.Post("/admin/events/{id}/attendance",                adminEventHandler.UpdateAttendance)
+			r.Post("/admin/events/{id}/photos",                    photoHandler.Upload)
+			r.Post("/admin/events/{id}/photos/{photoId}/delete",   photoHandler.Delete)
+			r.Post("/admin/events/{id}/complete",                  photoHandler.ToggleComplete)
 
 			// Participant management (admin only)
 			r.Get("/admin/events/{id}/participants",                       participantHandler.ListParticipants)

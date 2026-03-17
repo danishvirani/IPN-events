@@ -331,12 +331,13 @@ type AdminEventHandler struct {
 	teamRepo        *db.TeamRepository
 	userRepo        *db.UserRepository
 	participantRepo *db.ParticipantRepository
+	photoRepo       *db.PhotoRepository
 	emailSvc        *email.Service
 	uploadDir       string
 }
 
-func NewAdminEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, teamRepo *db.TeamRepository, userRepo *db.UserRepository, participantRepo *db.ParticipantRepository, emailSvc *email.Service, uploadDir string) *AdminEventHandler {
-	return &AdminEventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, teamRepo: teamRepo, userRepo: userRepo, participantRepo: participantRepo, emailSvc: emailSvc, uploadDir: uploadDir}
+func NewAdminEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, teamRepo *db.TeamRepository, userRepo *db.UserRepository, participantRepo *db.ParticipantRepository, photoRepo *db.PhotoRepository, emailSvc *email.Service, uploadDir string) *AdminEventHandler {
+	return &AdminEventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, teamRepo: teamRepo, userRepo: userRepo, participantRepo: participantRepo, photoRepo: photoRepo, emailSvc: emailSvc, uploadDir: uploadDir}
 }
 
 // adminSaveImage is the same image-upload helper as EventHandler.saveImage but for admin handlers.
@@ -438,6 +439,7 @@ func (h *AdminEventHandler) Show(w http.ResponseWriter, r *http.Request) {
 	teamMembers, _ := h.teamRepo.ListByEvent(id)
 	allUsers, _ := h.userRepo.ListAll()
 	participantCounts, _ := h.participantRepo.CountByEvent(id)
+	photos, _ := h.photoRepo.ListByEvent(id)
 
 	render(w, r, "web/templates/events/show.html", EventShowData{
 		Event:             e,
@@ -447,6 +449,7 @@ func (h *AdminEventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		TeamMembers:       teamMembers,
 		AllUsers:          allUsers,
 		ParticipantCounts: participantCounts,
+		Photos:            photos,
 	})
 }
 

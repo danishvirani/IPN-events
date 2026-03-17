@@ -93,6 +93,8 @@ type Event struct {
 	RegistrationMode   string // "full" (default) or "count_only"
 	AttendanceCount    int    // manual override for actual attendance
 
+	Completed bool // true when the event is marked as finished
+
 	Status       string
 	AdminComment string
 
@@ -158,6 +160,9 @@ func (e *Event) QuarterYear() string {
 }
 
 func (e *Event) StatusBadgeClass() string {
+	if e.Completed {
+		return "bg-blue-100 text-blue-800"
+	}
 	switch e.Status {
 	case StatusApproved:
 		return "bg-green-100 text-green-800"
@@ -166,4 +171,11 @@ func (e *Event) StatusBadgeClass() string {
 	default:
 		return "bg-yellow-100 text-yellow-800"
 	}
+}
+
+func (e *Event) DisplayStatus() string {
+	if e.Completed {
+		return "completed"
+	}
+	return e.Status
 }

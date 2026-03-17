@@ -1,0 +1,66 @@
+{{define "title"}}Photo Gallery{{end}}
+
+{{define "content"}}
+{{$groups := .Data}}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Photo Gallery</h1>
+  <p class="text-sm text-gray-500 mt-1">Event photos across all events</p>
+</div>
+
+{{if $groups}}
+<div class="space-y-8">
+
+  {{range $g := $groups}}
+  <section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6" x-data="{ lightbox: false, current: 0 }">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-700 flex items-center gap-2">
+        {{$g.EventName}}
+        <span class="text-xs font-normal text-gray-400">({{len $g.Photos}} photo{{if ne (len $g.Photos) 1}}s{{end}})</span>
+      </h2>
+      <a href="/admin/events/{{$g.EventID}}?tab=post-event" class="text-sm text-indigo-600 hover:text-indigo-700 font-medium">View Event &rarr;</a>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+      {{range $i, $p := $g.Photos}}
+      <div class="cursor-pointer group" @click="lightbox=true; current={{$i}}">
+        <img src="/uploads/{{$p.Thumbnail}}" alt="{{$p.Caption}}"
+             class="w-full h-36 object-cover rounded-lg border border-gray-200 shadow-sm group-hover:shadow-md transition-shadow">
+      </div>
+      {{end}}
+    </div>
+
+    <!-- Lightbox for this event group -->
+    <template x-if="lightbox">
+      <div class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+           @click.self="lightbox=false" @keydown.escape.window="lightbox=false"
+           @keydown.left.window="current = (current - 1 + {{len $g.Photos}}) % {{len $g.Photos}}"
+           @keydown.right.window="current = (current + 1) % {{len $g.Photos}}">
+        <button @click="lightbox=false" class="absolute top-4 right-4 text-white/80 hover:text-white text-3xl z-10">&times;</button>
+        {{if gt (len $g.Photos) 1}}
+        <button @click="current = (current - 1 + {{len $g.Photos}}) % {{len $g.Photos}}"
+                class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl z-10">&#8249;</button>
+        <button @click="current = (current + 1) % {{len $g.Photos}}"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl z-10">&#8250;</button>
+        {{end}}
+        {{range $i, $p := $g.Photos}}
+        <img x-show="current === {{$i}}" src="/uploads/{{$p.Filename}}" alt="{{$p.Caption}}"
+             class="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl" x-transition>
+        {{end}}
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
+          <span x-text="current + 1"></span> / {{len $g.Photos}}
+        </div>
+      </div>
+    </template>
+  </section>
+  {{end}}
+
+</div>
+{{else}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+  <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+  <h3 class="mt-2 text-sm font-semibold text-gray-900">No photos yet</h3>
+  <p class="mt-1 text-sm text-gray-500">Photos will appear here as they are uploaded to events.</p>
+</div>
+{{end}}
+
+{{end}}

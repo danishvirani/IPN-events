@@ -56,6 +56,7 @@ func RunMigrations(db *sql.DB) {
 		"migrations/018_add_last_login.sql",
 		"migrations/019_event_participants.sql",
 		"migrations/020_registration_mode.sql",
+		"migrations/021_event_photos.sql",
 	}
 
 	for _, path := range migrations {

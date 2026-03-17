@@ -7,8 +7,9 @@ primary_region = 'iad'    # iad = Washington DC (closest to Atlanta)
 [build]
 
 [env]
-  APP_PORT = "8080"
-  DB_PATH  = "/data/ipn-events.db"
+  APP_PORT    = "8080"
+  DB_PATH     = "/data/ipn-events.db"
+  UPLOAD_DIR  = "/data/uploads"
 
 # Persistent volume for the SQLite database file
 [mounts]

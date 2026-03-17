@@ -26,6 +26,7 @@ type EventShowData struct {
 	TeamMembers       []*models.TeamMember
 	AllUsers          []*models.User // for admin "Assigned To" dropdown
 	ParticipantCounts *models.ParticipantCounts
+	Photos            []*models.EventPhoto
 }
 
 // EventFormData holds data for the event new/edit form templates.
@@ -42,11 +43,12 @@ type EventHandler struct {
 	checklistRepo   *db.ChecklistRepository
 	teamRepo        *db.TeamRepository
 	participantRepo *db.ParticipantRepository
+	photoRepo       *db.PhotoRepository
 	uploadDir       string
 }
 
-func NewEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, teamRepo *db.TeamRepository, participantRepo *db.ParticipantRepository, uploadDir string) *EventHandler {
-	return &EventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, teamRepo: teamRepo, participantRepo: participantRepo, uploadDir: uploadDir}
+func NewEventHandler(eventRepo *db.EventRepository, commentRepo *db.CommentRepository, initiativeRepo *db.InitiativeRepository, budgetRepo *db.BudgetRepository, checklistRepo *db.ChecklistRepository, teamRepo *db.TeamRepository, participantRepo *db.ParticipantRepository, photoRepo *db.PhotoRepository, uploadDir string) *EventHandler {
+	return &EventHandler{eventRepo: eventRepo, commentRepo: commentRepo, initiativeRepo: initiativeRepo, budgetRepo: budgetRepo, checklistRepo: checklistRepo, teamRepo: teamRepo, participantRepo: participantRepo, photoRepo: photoRepo, uploadDir: uploadDir}
 }
 
 // saveImage handles image upload from a multipart form field named "image".
@@ -179,6 +181,7 @@ func (h *EventHandler) Show(w http.ResponseWriter, r *http.Request) {
 
 	teamMembers, _ := h.teamRepo.ListByEvent(id)
 	participantCounts, _ := h.participantRepo.CountByEvent(id)
+	photos, _ := h.photoRepo.ListByEvent(id)
 
 	render(w, r, "web/templates/events/show.html", EventShowData{
 		Event:             e,
@@ -187,6 +190,7 @@ func (h *EventHandler) Show(w http.ResponseWriter, r *http.Request) {
 		Checklist:         checklistData,
 		TeamMembers:       teamMembers,
 		ParticipantCounts: participantCounts,
+		Photos:            photos,
 	})
 }
 

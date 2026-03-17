@@ -309,7 +309,8 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 		       COALESCE(e.assigned_to, e.user_id), COALESCE(a.name, u.name),
 		       e.registration_count, e.participation_count,
 		       e.is_paid_event,
-		       e.registration_mode, e.attendance_count
+		       e.registration_mode, e.attendance_count,
+		       e.completed
 		FROM events e
 		JOIN users u ON e.user_id = u.id
 		LEFT JOIN users a ON e.assigned_to = a.id
@@ -324,6 +325,7 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 		&registrationCount, &participationCount,
 		&e.IsPaidEvent,
 		&registrationMode, &attendanceCount,
+		&e.Completed,
 	)
 	if err != nil {
 		return nil, err
@@ -494,7 +496,8 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 		       e.recurrence, e.recurrence_end_date, e.event_date,
 		       e.start_time, e.end_time, e.image_path,
 		       e.city, e.scope,
-		       e.status, e.admin_comment, e.created_at, e.updated_at
+		       e.status, e.admin_comment, e.created_at, e.updated_at,
+		       e.completed
 		FROM events e
 		JOIN users u ON e.user_id = u.id ` + whereClause
 
@@ -517,6 +520,7 @@ func (r *EventRepository) listEvents(whereClause string, args ...any) ([]*models
 			&startTime, &endTime, &imagePath,
 			&city, &scope,
 			&e.Status, &adminComment, &e.CreatedAt, &e.UpdatedAt,
+			&e.Completed,
 		); err != nil {
 			return nil, err
 		}
@@ -810,6 +814,16 @@ func (r *EventRepository) InitiativeEventCounts() ([]models.InitiativeCount, err
 // UpdateRegistrationMode sets the registration_mode for an event.
 func (r *EventRepository) UpdateRegistrationMode(id, mode string) error {
 	_, err := r.db.Exec(`UPDATE events SET registration_mode=?, updated_at=datetime('now') WHERE id=?`, mode, id)
+	return err
+}
+
+// ToggleCompleted marks or unmarks an event as completed.
+func (r *EventRepository) ToggleCompleted(id string, completed bool) error {
+	val := 0
+	if completed {
+		val = 1
+	}
+	_, err := r.db.Exec(`UPDATE events SET completed=?, updated_at=datetime('now') WHERE id=?`, val, id)
 	return err
 }
 
