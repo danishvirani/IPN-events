@@ -8,7 +8,11 @@
 <div class="mb-8 flex items-start justify-between animate-in">
   <div>
     <h1 class="text-2xl font-bold heading-gradient">Dashboard</h1>
-    <p class="text-gray-500 text-sm mt-1">IPN Event management overview</p>
+    <p class="text-gray-500 text-sm mt-1"
+       x-data="{ text: '', full: 'IPN Event management overview', i: 0 }"
+       x-init="let t = setInterval(() => { if(i < full.length) { text += full[i]; i++; } else clearInterval(t) }, 35)"
+       x-text="text"
+       ><span class="typewriter-cursor">&nbsp;</span></p>
   </div>
   {{if $isAdmin}}
   <a href="/admin/users/new" class="hidden sm:inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg btn-glow">
@@ -25,11 +29,14 @@
   <div class="card p-5 animate-in delay-1">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Total Events</p>
-      <div class="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
+      <div class="w-9 h-9 rounded-lg icon-bounce bg-indigo-50 flex items-center justify-center">
         <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
       </div>
     </div>
-    <p class="text-3xl font-bold text-gray-900">{{$d.Stats.Total}}</p>
+    <p class="text-3xl font-bold number-pop text-gray-900"
+       x-data="{ val: 0, target: {{$d.Stats.Total}} }"
+       x-init="let s = Math.max(1, Math.ceil(target/30)); let t = setInterval(() => { val = Math.min(val+s, target); if(val>=target) clearInterval(t) }, 30)"
+       x-text="val">0</p>
     <div class="flex items-center gap-3 mt-2">
       <span class="inline-flex items-center gap-1 text-xs text-yellow-600"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>{{$d.Stats.Pending}}</span>
       <span class="inline-flex items-center gap-1 text-xs text-green-600"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>{{$d.Stats.Approved}}</span>
@@ -41,11 +48,14 @@
   <div class="card p-5 animate-in delay-2">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Registrations</p>
-      <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+      <div class="w-9 h-9 rounded-lg icon-bounce bg-blue-50 flex items-center justify-center">
         <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
       </div>
     </div>
-    <p class="text-3xl font-bold text-gray-900">{{$d.Stats.TotalRegistrations}}</p>
+    <p class="text-3xl font-bold number-pop text-gray-900"
+       x-data="{ val: 0, target: {{$d.Stats.TotalRegistrations}} }"
+       x-init="let s = Math.max(1, Math.ceil(target/30)); let t = setInterval(() => { val = Math.min(val+s, target); if(val>=target) clearInterval(t) }, 30)"
+       x-text="val">0</p>
     <p class="text-xs text-gray-400 mt-2">Across approved events</p>
   </div>
 
@@ -53,11 +63,14 @@
   <div class="card p-5 animate-in delay-3">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Participants</p>
-      <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
+      <div class="w-9 h-9 rounded-lg icon-bounce bg-green-50 flex items-center justify-center">
         <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
       </div>
     </div>
-    <p class="text-3xl font-bold text-gray-900">{{$d.Stats.TotalParticipants}}</p>
+    <p class="text-3xl font-bold number-pop text-gray-900"
+       x-data="{ val: 0, target: {{$d.Stats.TotalParticipants}} }"
+       x-init="let s = Math.max(1, Math.ceil(target/30)); let t = setInterval(() => { val = Math.min(val+s, target); if(val>=target) clearInterval(t) }, 30)"
+       x-text="val">0</p>
     <p class="text-xs text-gray-400 mt-2">Attended approved events</p>
   </div>
 
@@ -65,11 +78,11 @@
   <div class="card p-5 animate-in delay-4">
     <div class="flex items-center justify-between mb-3">
       <p class="text-sm font-medium text-gray-500">Budget ({{$d.CurrentYear}})</p>
-      <div class="w-9 h-9 rounded-lg {{if ge $d.BudgetBalance 0}}bg-green-50{{else}}bg-red-50{{end}} flex items-center justify-center">
+      <div class="w-9 h-9 rounded-lg icon-bounce {{if ge $d.BudgetBalance 0}}bg-green-50{{else}}bg-red-50{{end}} flex items-center justify-center">
         <svg class="w-5 h-5 {{if ge $d.BudgetBalance 0}}text-green-600{{else}}text-red-600{{end}}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </div>
     </div>
-    <p class="text-3xl font-bold {{if ge $d.BudgetBalance 0}}text-green-600{{else}}text-red-600{{end}}">
+    <p class="text-3xl font-bold number-pop {{if ge $d.BudgetBalance 0}}text-green-600{{else}}text-red-600{{end}}">
       {{formatMoney $d.BudgetBalance}}
     </p>
     <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
@@ -181,7 +194,7 @@
           <span class="text-sm font-semibold text-gray-900">{{.Count}}</span>
         </div>
         <div class="w-full bg-gray-100 rounded-full h-3">
-          <div class="bg-indigo-500 h-3 rounded-full transition-all duration-500"
+          <div class="bg-indigo-500 h-3 rounded-full bar-animate"
                style="width: {{pct .Count $d.MaxQuarterCount}}%"></div>
         </div>
       </div>
@@ -205,7 +218,7 @@
     {{if $d.RecentEvents}}
     <div class="divide-y divide-gray-100">
       {{range $d.RecentEvents}}
-      <a href="/admin/events/{{.ID}}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+      <a href="/admin/events/{{.ID}}" class="flex items-center justify-between px-5 py-3 row-highlight transition-colors">
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-900 truncate">{{.Name}}</p>
           <p class="text-xs text-gray-400 mt-0.5">by {{.UserName}} &middot; {{.CreatedAt.Format "Jan 2"}}</p>
@@ -244,7 +257,7 @@
     {{if $d.UpcomingEvents}}
     <div class="divide-y divide-gray-100">
       {{range $d.UpcomingEvents}}
-      <a href="/admin/events/{{.ID}}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors">
+      <a href="/admin/events/{{.ID}}" class="flex items-center gap-4 px-5 py-3 row-highlight transition-colors">
         <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-indigo-50 flex flex-col items-center justify-center">
           {{if .EventDate}}
           <span class="text-xs font-semibold text-indigo-600 uppercase leading-none">{{slice .EventDate 5 7}}/{{slice .EventDate 8 10}}</span>
@@ -288,7 +301,7 @@
           <span class="text-xs font-semibold text-gray-500">{{.Count}} event{{if ne .Count 1}}s{{end}}</span>
         </div>
         <div class="w-full bg-gray-100 rounded-full h-2">
-          <div class="bg-purple-500 h-2 rounded-full transition-all duration-500"
+          <div class="bg-purple-500 h-2 rounded-full bar-animate"
                style="width: {{pct .Count $d.MaxInitiativeCount}}%"></div>
         </div>
       </div>
