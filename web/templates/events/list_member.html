@@ -23,7 +23,7 @@
         <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{.Description}}</p>
       </div>
       <span class="flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize {{.StatusBadgeClass}}">
-        {{.Status}}
+        {{.DisplayStatus}}
       </span>
     </div>
     <p class="text-xs text-gray-400 mt-2">Submitted {{.CreatedAt.Format "Jan 2, 2006"}}</p>

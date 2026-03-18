@@ -568,8 +568,8 @@
       <form method="POST" action="/admin/events/{{$e.ID}}/participants/import" enctype="multipart/form-data"
             class="flex items-end gap-3 flex-wrap">
         <div class="flex-1 min-w-[200px]">
-          <label class="block text-xs font-medium text-gray-500 mb-1">Import Participants CSV</label>
-          <input type="file" name="csv_file" accept=".csv"
+          <label class="block text-xs font-medium text-gray-500 mb-1">Import Participants CSV/Excel</label>
+          <input type="file" name="csv_file" accept=".csv,.xlsx,.xls"
                  class="block w-full text-sm text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50">
         </div>
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">Upload</button>

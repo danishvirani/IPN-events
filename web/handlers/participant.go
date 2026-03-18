@@ -3,12 +3,16 @@ package handlers
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"net/http"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/xuri/excelize/v2"
 
 	"ipn-events/internal/db"
 	"ipn-events/internal/models"
@@ -88,7 +92,7 @@ func (h *ParticipantHandler) DownloadTemplate(w http.ResponseWriter, r *http.Req
 	writer.Flush()
 }
 
-// ImportCSV handles CSV upload and upsert of participants.
+// ImportCSV handles CSV or XLSX upload with smart column mapping.
 func (h *ParticipantHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	e, err := h.eventRepo.GetByID(id)
@@ -97,57 +101,50 @@ func (h *ParticipantHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	redirect := "/admin/events/" + e.ID + "/participants"
+
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		setFlash(w, "error", "File too large.")
-		http.Redirect(w, r, "/admin/events/"+e.ID+"/participants", http.StatusSeeOther)
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
 
-	file, _, err := r.FormFile("csv_file")
+	file, header, err := r.FormFile("csv_file")
 	if err != nil {
-		setFlash(w, "error", "Please select a CSV file.")
-		http.Redirect(w, r, "/admin/events/"+e.ID+"/participants", http.StatusSeeOther)
+		setFlash(w, "error", "Please select a file.")
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
 	defer file.Close()
 
-	reader := csv.NewReader(file)
-	reader.TrimLeadingSpace = true
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	var rows [][]string
 
-	header, err := reader.Read()
-	if err != nil {
-		setFlash(w, "error", "Could not read CSV header.")
-		http.Redirect(w, r, "/admin/events/"+e.ID+"/participants", http.StatusSeeOther)
+	switch ext {
+	case ".xlsx", ".xls":
+		rows, err = readXLSX(file)
+	default:
+		rows, err = readCSV(file)
+	}
+	if err != nil || len(rows) < 2 {
+		setFlash(w, "error", "Could not read file or no data rows found.")
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
 
-	// Build column index map
-	colIdx := make(map[string]int)
-	for i, h := range header {
-		colIdx[strings.TrimSpace(strings.ToLower(h))] = i
-	}
+	// Smart column mapping from header row
+	colMap := mapColumns(rows[0])
 
-	getCol := func(row []string, name string) string {
-		if idx, ok := colIdx[name]; ok && idx < len(row) {
+	getCol := func(row []string, field string) string {
+		if idx, ok := colMap[field]; ok && idx < len(row) {
 			return strings.TrimSpace(row[idx])
 		}
 		return ""
 	}
 
 	var participants []*models.Participant
-	lineNum := 1
-	for {
-		row, err := reader.Read()
-		if err != nil {
-			break
-		}
-		lineNum++
-
-		// Accept both "title" and "role" column names
-		title := getCol(row, "title")
-		if title == "" {
-			title = getCol(row, "role")
-		}
+	for _, row := range rows[1:] {
+		title := getCol(row, "role")
 
 		p := &models.Participant{
 			FirstName:  getCol(row, "first_name"),
@@ -160,7 +157,6 @@ func (h *ParticipantHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 			Role:       title,
 		}
 
-		// Skip completely empty rows
 		if p.FirstName == "" && p.LastName == "" && p.Email == "" && p.Phone == "" {
 			continue
 		}
@@ -168,15 +164,15 @@ func (h *ParticipantHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(participants) == 0 {
-		setFlash(w, "error", "No valid participant rows found in CSV.")
-		http.Redirect(w, r, "/admin/events/"+e.ID+"/participants", http.StatusSeeOther)
+		setFlash(w, "error", "No valid participant rows found.")
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
 
 	created, updated, err := h.participantRepo.BulkUpsert(e.ID, participants)
 	if err != nil {
 		setFlash(w, "error", "Import failed: "+err.Error())
-		http.Redirect(w, r, "/admin/events/"+e.ID+"/participants", http.StatusSeeOther)
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
 
@@ -186,7 +182,93 @@ func (h *ParticipantHandler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 	msg += " participants."
 	setFlash(w, "success", msg)
-	http.Redirect(w, r, "/admin/events/"+e.ID+"/participants", http.StatusSeeOther)
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
+}
+
+// readCSV reads a CSV file into rows of string slices.
+func readCSV(file io.Reader) ([][]string, error) {
+	reader := csv.NewReader(file)
+	reader.TrimLeadingSpace = true
+	return reader.ReadAll()
+}
+
+// readXLSX reads the first sheet of an XLSX file into rows.
+func readXLSX(file io.Reader) ([][]string, error) {
+	f, err := excelize.OpenReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	sheet := f.GetSheetName(0)
+	return f.GetRows(sheet)
+}
+
+// stripHTML removes HTML tags from a string.
+var htmlTagRe = regexp.MustCompile(`<[^>]*>`)
+
+func stripHTML(s string) string {
+	return strings.TrimSpace(htmlTagRe.ReplaceAllString(s, ""))
+}
+
+// mapColumns takes a header row and returns a map of canonical field name → column index.
+// It uses fuzzy matching to handle variations like "Participant Name - First" → "first_name".
+func mapColumns(headers []string) map[string]int {
+	result := make(map[string]int)
+
+	for i, raw := range headers {
+		h := strings.ToLower(stripHTML(strings.TrimSpace(raw)))
+		h = strings.ReplaceAll(h, "_", " ")
+
+		switch {
+		// First name
+		case strings.Contains(h, "first") && strings.Contains(h, "name"):
+			result["first_name"] = i
+		case h == "first name" || h == "first_name" || h == "firstname":
+			result["first_name"] = i
+
+		// Last name
+		case strings.Contains(h, "last") && strings.Contains(h, "name"):
+			result["last_name"] = i
+		case h == "last name" || h == "last_name" || h == "lastname":
+			result["last_name"] = i
+
+		// Email
+		case strings.Contains(h, "email"):
+			result["email"] = i
+
+		// Phone
+		case strings.Contains(h, "phone") || strings.Contains(h, "mobile") || strings.Contains(h, "cell"):
+			result["phone"] = i
+
+		// Jamatkhana
+		case strings.Contains(h, "jamatkhana") || strings.Contains(h, "jk"):
+			result["jamatkhana"] = i
+
+		// Gender
+		case strings.Contains(h, "gender") || h == "sex":
+			result["gender"] = i
+
+		// Company / Organization
+		case strings.Contains(h, "company") || strings.Contains(h, "organization") || strings.Contains(h, "org"):
+			if _, exists := result["company"]; !exists {
+				result["company"] = i
+			}
+
+		// Title / Role
+		case h == "title" || h == "role" || strings.Contains(h, "job title") || strings.Contains(h, "position"):
+			if _, exists := result["role"]; !exists {
+				result["role"] = i
+			}
+
+		// Age group → store in role field if role not already mapped
+		case strings.Contains(h, "age") && strings.Contains(h, "group"):
+			if _, exists := result["role"]; !exists {
+				result["role"] = i
+			}
+		}
+	}
+
+	return result
 }
 
 // DeleteParticipant removes a participant (admin only).

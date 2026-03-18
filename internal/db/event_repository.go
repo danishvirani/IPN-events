@@ -455,7 +455,9 @@ func (r *EventRepository) ListAllFiltered(f EventFilter) ([]*models.Event, error
 	var conditions []string
 	var args []any
 
-	if f.Status != "" {
+	if f.Status == "completed" {
+		conditions = append(conditions, "e.completed = 1")
+	} else if f.Status != "" {
 		conditions = append(conditions, "e.status = ?")
 		args = append(args, f.Status)
 	}

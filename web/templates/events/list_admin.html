@@ -8,6 +8,7 @@
     <a href="/admin/events?status=pending{{if .Data.Search}}&q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "pending"}}bg-yellow-500 text-white border-yellow-500{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Pending</a>
     <a href="/admin/events?status=approved{{if .Data.Search}}&q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "approved"}}bg-green-600 text-white border-green-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Approved</a>
     <a href="/admin/events?status=rejected{{if .Data.Search}}&q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "rejected"}}bg-red-600 text-white border-red-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Rejected</a>
+    <a href="/admin/events?status=completed{{if .Data.Search}}&q={{.Data.Search}}{{end}}" class="px-3 py-1.5 rounded-lg border {{if eq .Data.StatusFilter "completed"}}bg-blue-600 text-white border-blue-600{{else}}bg-white text-gray-600 border-gray-300 hover:bg-gray-50{{end}}">Completed</a>
   </div>
 </div>
 
@@ -97,7 +98,7 @@
         {{end}}
       </div>
       <span class="flex-shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize {{.StatusBadgeClass}}">
-        {{.Status}}
+        {{.DisplayStatus}}
       </span>
     </div>
     <p class="text-xs text-gray-400 mt-2">{{.CreatedAt.Format "Jan 2, 2006 at 3:04 PM"}}</p>
