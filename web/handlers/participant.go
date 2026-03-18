@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -421,6 +422,8 @@ type registrantsPageData struct {
 	Companies   []string
 	Roles       []string
 	Total       int
+	Sort        string
+	Order       string
 }
 
 // ListRegistrants shows a unified, deduplicated view of registrants across all events.
@@ -429,12 +432,22 @@ func (h *ParticipantHandler) ListRegistrants(w http.ResponseWriter, r *http.Requ
 	search := q.Get("q")
 	company := q.Get("company")
 	role := q.Get("role")
+	sortBy := q.Get("sort")
+	order := q.Get("order")
+	if sortBy == "" {
+		sortBy = "name"
+	}
+	if order == "" {
+		order = "asc"
+	}
 
 	registrants, err := h.participantRepo.ListAllRegistrants(search, company, role)
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	sortRegistrantsList(registrants, sortBy, order)
 
 	companies, _ := h.participantRepo.ListDistinctCompanies()
 	roles, _ := h.participantRepo.ListDistinctRoles()
@@ -447,6 +460,37 @@ func (h *ParticipantHandler) ListRegistrants(w http.ResponseWriter, r *http.Requ
 		Companies:   companies,
 		Roles:       roles,
 		Total:       len(registrants),
+		Sort:        sortBy,
+		Order:       order,
+	})
+}
+
+func sortRegistrantsList(registrants []*models.Registrant, sortBy, order string) {
+	sort.Slice(registrants, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "email":
+			ei, ej := "", ""
+			if len(registrants[i].Emails) > 0 {
+				ei = registrants[i].Emails[0]
+			}
+			if len(registrants[j].Emails) > 0 {
+				ej = registrants[j].Emails[0]
+			}
+			less = strings.ToLower(ei) < strings.ToLower(ej)
+		case "company":
+			less = strings.ToLower(registrants[i].Company) < strings.ToLower(registrants[j].Company)
+		case "title":
+			less = strings.ToLower(registrants[i].Title) < strings.ToLower(registrants[j].Title)
+		case "events":
+			less = registrants[i].TotalEvents < registrants[j].TotalEvents
+		default:
+			less = strings.ToLower(registrants[i].Name) < strings.ToLower(registrants[j].Name)
+		}
+		if order == "desc" {
+			return !less
+		}
+		return less
 	})
 }
 

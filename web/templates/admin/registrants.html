@@ -52,6 +52,10 @@
   </form>
 </div>
 
+{{$sort := .Data.Sort}}
+{{$order := .Data.Order}}
+{{$qp := ""}}{{if $search}}{{$qp = printf "&q=%s" $search}}{{end}}{{if $company}}{{$qp = printf "%s&company=%s" $qp $company}}{{end}}{{if $role}}{{$qp = printf "%s&role=%s" $qp $role}}{{end}}
+
 {{/* Table */}}
 {{if $registrants}}
 <div class="card-static overflow-hidden">
@@ -59,12 +63,37 @@
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-gray-50 border-b border-gray-200">
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Title</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Company</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Email(s)</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600">
+            <a href="/admin/registrants?sort=name&order={{if and (eq $sort "name") (eq $order "asc")}}desc{{else}}asc{{end}}{{$qp}}" class="inline-flex items-center gap-1 hover:text-gray-900 transition-colors">
+              Name
+              {{if eq $sort "name"}}{{if eq $order "asc"}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>{{else}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>{{end}}{{else}}<svg class="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16l5 5 5-5M7 8l5-5 5 5"/></svg>{{end}}
+            </a>
+          </th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">
+            <a href="/admin/registrants?sort=title&order={{if and (eq $sort "title") (eq $order "asc")}}desc{{else}}asc{{end}}{{$qp}}" class="inline-flex items-center gap-1 hover:text-gray-900 transition-colors">
+              Title
+              {{if eq $sort "title"}}{{if eq $order "asc"}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>{{else}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>{{end}}{{else}}<svg class="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16l5 5 5-5M7 8l5-5 5 5"/></svg>{{end}}
+            </a>
+          </th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">
+            <a href="/admin/registrants?sort=company&order={{if and (eq $sort "company") (eq $order "asc")}}desc{{else}}asc{{end}}{{$qp}}" class="inline-flex items-center gap-1 hover:text-gray-900 transition-colors">
+              Company
+              {{if eq $sort "company"}}{{if eq $order "asc"}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>{{else}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>{{end}}{{else}}<svg class="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16l5 5 5-5M7 8l5-5 5 5"/></svg>{{end}}
+            </a>
+          </th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600">
+            <a href="/admin/registrants?sort=email&order={{if and (eq $sort "email") (eq $order "asc")}}desc{{else}}asc{{end}}{{$qp}}" class="inline-flex items-center gap-1 hover:text-gray-900 transition-colors">
+              Email(s)
+              {{if eq $sort "email"}}{{if eq $order "asc"}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>{{else}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>{{end}}{{else}}<svg class="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16l5 5 5-5M7 8l5-5 5 5"/></svg>{{end}}
+            </a>
+          </th>
           <th class="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Phone(s)</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Events</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-600">
+            <a href="/admin/registrants?sort=events&order={{if and (eq $sort "events") (eq $order "asc")}}desc{{else}}asc{{end}}{{$qp}}" class="inline-flex items-center gap-1 hover:text-gray-900 transition-colors">
+              Events
+              {{if eq $sort "events"}}{{if eq $order "asc"}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>{{else}}<svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>{{end}}{{else}}<svg class="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16l5 5 5-5M7 8l5-5 5 5"/></svg>{{end}}
+            </a>
+          </th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
