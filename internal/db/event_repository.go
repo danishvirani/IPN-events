@@ -741,8 +741,12 @@ func (r *EventRepository) DashboardStats() (*models.DashboardStats, error) {
 			SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END),
 			SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END),
 			SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END),
-			COALESCE(SUM(CASE WHEN status='approved' THEN registration_count ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN status='approved' THEN participation_count ELSE 0 END), 0)
+			COALESCE(SUM(CASE WHEN status='approved' THEN
+				COALESCE(NULLIF(registration_count, 0), (SELECT COUNT(*) FROM event_participants WHERE event_id=events.id))
+			ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status='approved' THEN
+				COALESCE(NULLIF(participation_count, 0), (SELECT COUNT(*) FROM event_participants WHERE event_id=events.id AND checked_in=1))
+			ELSE 0 END), 0)
 		FROM events`,
 	).Scan(&s.Total, &s.Pending, &s.Approved, &s.Rejected, &s.TotalRegistrations, &s.TotalParticipants)
 	if err != nil {
