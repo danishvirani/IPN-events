@@ -1050,6 +1050,175 @@
   </section>
   {{end}}
 
+  {{/* Achievement Scores */}}
+  <section class="card-static p-6">
+    <h2 class="text-base font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-8"/></svg>
+      Achievement Scores
+    </h2>
+    <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/achievements{{else}}/events/{{$e.ID}}/achievements{{end}}"
+          x-data="{output: {{$e.OutputAchievement}}, outcome: {{$e.OutcomeAchievement}}, impact: {{$e.ImpactAchievement}}}"
+          class="space-y-0">
+      {{/* Output */}}
+      <div class="border border-gray-200 dark:border-gray-700 rounded-t-lg overflow-hidden">
+        <div class="grid grid-cols-[1fr_auto] border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div class="px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400">Output</div>
+          <div class="px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400 text-center w-48">Achievement</div>
+        </div>
+        <div class="grid grid-cols-[1fr_auto] items-center">
+          <div class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+            {{if $e.OutputItems}}{{range $i, $o := $e.OutputItems}}{{if $i}}, {{end}}{{$o.Description}}{{end}}{{else}}<span class="italic text-gray-400">No outputs defined</span>{{end}}
+          </div>
+          <div class="px-4 py-3 flex items-center gap-2 w-48">
+            {{if $canUpload}}
+            <input type="range" name="output_achievement" min="0" max="100" step="5" x-model="output"
+                   class="w-24 accent-indigo-600">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-10 text-right" x-text="output + '%'"></span>
+            {{else}}
+            <div class="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-indigo-600 h-2 rounded-full" style="width: {{$e.OutputAchievement}}%"></div></div>
+            <span class="text-sm text-gray-600 dark:text-gray-400 w-10 text-right">{{$e.OutputAchievement}}%</span>
+            {{end}}
+          </div>
+        </div>
+      </div>
+
+      {{/* Outcome */}}
+      <div class="border-x border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="grid grid-cols-[1fr_auto] border-b border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div class="px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400">Outcome</div>
+          <div class="px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400 text-center w-48">Achievement</div>
+        </div>
+        <div class="grid grid-cols-[1fr_auto] items-center border-b border-gray-200 dark:border-gray-700">
+          <div class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+            {{if $e.Outcome}}{{$e.Outcome}}{{else}}<span class="italic text-gray-400">No outcome defined</span>{{end}}
+          </div>
+          <div class="px-4 py-3 flex items-center gap-2 w-48">
+            {{if $canUpload}}
+            <input type="range" name="outcome_achievement" min="0" max="100" step="5" x-model="outcome"
+                   class="w-24 accent-indigo-600">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-10 text-right" x-text="outcome + '%'"></span>
+            {{else}}
+            <div class="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-indigo-600 h-2 rounded-full" style="width: {{$e.OutcomeAchievement}}%"></div></div>
+            <span class="text-sm text-gray-600 dark:text-gray-400 w-10 text-right">{{$e.OutcomeAchievement}}%</span>
+            {{end}}
+          </div>
+        </div>
+      </div>
+
+      {{/* Impact */}}
+      <div class="border border-t-0 border-gray-200 dark:border-gray-700 rounded-b-lg overflow-hidden">
+        <div class="grid grid-cols-[1fr_auto] border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div class="px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400">Impact</div>
+          <div class="px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400 text-center w-48">Achievement</div>
+        </div>
+        <div class="grid grid-cols-[1fr_auto] items-center">
+          <div class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+            {{if $e.Impact}}{{$e.Impact}}{{else}}<span class="italic text-gray-400">No impact defined</span>{{end}}
+          </div>
+          <div class="px-4 py-3 flex items-center gap-2 w-48">
+            {{if $canUpload}}
+            <input type="range" name="impact_achievement" min="0" max="100" step="5" x-model="impact"
+                   class="w-24 accent-indigo-600">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-10 text-right" x-text="impact + '%'"></span>
+            {{else}}
+            <div class="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-indigo-600 h-2 rounded-full" style="width: {{$e.ImpactAchievement}}%"></div></div>
+            <span class="text-sm text-gray-600 dark:text-gray-400 w-10 text-right">{{$e.ImpactAchievement}}%</span>
+            {{end}}
+          </div>
+        </div>
+      </div>
+
+      {{if $canUpload}}
+      <div class="pt-3">
+        <button type="submit" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+          Save Scores
+        </button>
+      </div>
+      {{end}}
+    </form>
+  </section>
+
+  {{/* SWOT Analysis */}}
+  <section class="card-static p-6">
+    <h2 class="text-base font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+      SWOT Analysis
+    </h2>
+    <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/swot{{else}}/events/{{$e.ID}}/swot{{end}}" class="space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {{/* Strengths */}}
+        <div class="border border-green-200 dark:border-green-900/50 rounded-lg overflow-hidden">
+          <div class="bg-green-50 dark:bg-green-900/30 px-4 py-2 border-b border-green-200 dark:border-green-900/50">
+            <h3 class="text-sm font-semibold text-green-800 dark:text-green-400">Strengths</h3>
+            <p class="text-xs text-green-600 dark:text-green-500 mt-0.5">What went well in your program.</p>
+          </div>
+          <div class="p-3">
+            {{if $canUpload}}
+            <textarea name="swot_strengths" rows="3" placeholder="What qualities separated your program from the competition..."
+                      class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-green-500/20 focus:border-green-400">{{$e.SWOTStrengths}}</textarea>
+            {{else}}
+            <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{if $e.SWOTStrengths}}{{$e.SWOTStrengths}}{{else}}<span class="italic text-gray-400">Not yet filled in</span>{{end}}</p>
+            {{end}}
+          </div>
+        </div>
+
+        {{/* Weaknesses */}}
+        <div class="border border-red-200 dark:border-red-900/50 rounded-lg overflow-hidden">
+          <div class="bg-red-50 dark:bg-red-900/30 px-4 py-2 border-b border-red-200 dark:border-red-900/50">
+            <h3 class="text-sm font-semibold text-red-800 dark:text-red-400">Weaknesses</h3>
+            <p class="text-xs text-red-600 dark:text-red-500 mt-0.5">What were some challenges in your program.</p>
+          </div>
+          <div class="p-3">
+            {{if $canUpload}}
+            <textarea name="swot_weaknesses" rows="3" placeholder="Any limitations that prevented your program from excelling..."
+                      class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-red-500/20 focus:border-red-400">{{$e.SWOTWeaknesses}}</textarea>
+            {{else}}
+            <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{if $e.SWOTWeaknesses}}{{$e.SWOTWeaknesses}}{{else}}<span class="italic text-gray-400">Not yet filled in</span>{{end}}</p>
+            {{end}}
+          </div>
+        </div>
+
+        {{/* Opportunities */}}
+        <div class="border border-blue-200 dark:border-blue-900/50 rounded-lg overflow-hidden">
+          <div class="bg-blue-50 dark:bg-blue-900/30 px-4 py-2 border-b border-blue-200 dark:border-blue-900/50">
+            <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-400">Opportunities</h3>
+            <p class="text-xs text-blue-600 dark:text-blue-500 mt-0.5">What opportunities could increase your program's effectiveness.</p>
+          </div>
+          <div class="p-3">
+            {{if $canUpload}}
+            <textarea name="swot_opportunities" rows="3" placeholder="Emerging needs for your participants that could be addressed..."
+                      class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">{{$e.SWOTOpportunities}}</textarea>
+            {{else}}
+            <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{if $e.SWOTOpportunities}}{{$e.SWOTOpportunities}}{{else}}<span class="italic text-gray-400">Not yet filled in</span>{{end}}</p>
+            {{end}}
+          </div>
+        </div>
+
+        {{/* Threats */}}
+        <div class="border border-amber-200 dark:border-amber-900/50 rounded-lg overflow-hidden">
+          <div class="bg-amber-50 dark:bg-amber-900/30 px-4 py-2 border-b border-amber-200 dark:border-amber-900/50">
+            <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-400">Threats</h3>
+            <p class="text-xs text-amber-600 dark:text-amber-500 mt-0.5">Factors that could reduce your program's performance.</p>
+          </div>
+          <div class="p-3">
+            {{if $canUpload}}
+            <textarea name="swot_threats" rows="3" placeholder="What factors have the potential to reduce your program's performance..."
+                      class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400">{{$e.SWOTThreats}}</textarea>
+            {{else}}
+            <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{if $e.SWOTThreats}}{{$e.SWOTThreats}}{{else}}<span class="italic text-gray-400">Not yet filled in</span>{{end}}</p>
+            {{end}}
+          </div>
+        </div>
+      </div>
+
+      {{if $canUpload}}
+      <button type="submit" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+        Save SWOT Analysis
+      </button>
+      {{end}}
+    </form>
+  </section>
+
   {{/* Photo Gallery */}}
   <section class="card-static p-6">
     <h2 class="text-base font-semibold text-gray-700 mb-4 flex items-center gap-2">

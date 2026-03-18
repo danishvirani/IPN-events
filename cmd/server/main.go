@@ -154,6 +154,8 @@ func main() {
 		r.Post("/events/{id}/photos/{photoId}/delete",  photoHandler.Delete)
 		r.Post("/events/{id}/photos/{photoId}/rotate",  photoHandler.Rotate)
 		r.Post("/events/{id}/complete",              photoHandler.ToggleComplete)
+		r.Post("/events/{id}/achievements",          photoHandler.UpdateAchievements)
+		r.Post("/events/{id}/swot",                  photoHandler.UpdateSWOT)
 		r.Post("/events/{id}/team/add",              teamHandler.AddMember)
 		r.Post("/events/{id}/team/{mid}/delete",     teamHandler.DeleteMember)
 
@@ -211,6 +213,8 @@ func main() {
 			r.Post("/admin/events/{id}/photos/{photoId}/delete",   photoHandler.Delete)
 			r.Post("/admin/events/{id}/photos/{photoId}/rotate",   photoHandler.Rotate)
 			r.Post("/admin/events/{id}/complete",                  photoHandler.ToggleComplete)
+			r.Post("/admin/events/{id}/achievements",              photoHandler.UpdateAchievements)
+			r.Post("/admin/events/{id}/swot",                      photoHandler.UpdateSWOT)
 
 			// Participant management (admin only)
 			r.Get("/admin/events/{id}/participants",                       participantHandler.ListParticipants)

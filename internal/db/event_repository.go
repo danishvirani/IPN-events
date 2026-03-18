@@ -310,7 +310,9 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 		       e.registration_count, e.participation_count,
 		       e.is_paid_event,
 		       e.registration_mode, e.attendance_count,
-		       e.completed
+		       e.completed,
+		       e.output_achievement, e.outcome_achievement, e.impact_achievement,
+		       e.swot_strengths, e.swot_weaknesses, e.swot_opportunities, e.swot_threats
 		FROM events e
 		JOIN users u ON e.user_id = u.id
 		LEFT JOIN users a ON e.assigned_to = a.id
@@ -326,6 +328,8 @@ func (r *EventRepository) GetByID(id string) (*models.Event, error) {
 		&e.IsPaidEvent,
 		&registrationMode, &attendanceCount,
 		&e.Completed,
+		&e.OutputAchievement, &e.OutcomeAchievement, &e.ImpactAchievement,
+		&e.SWOTStrengths, &e.SWOTWeaknesses, &e.SWOTOpportunities, &e.SWOTThreats,
 	)
 	if err != nil {
 		return nil, err
@@ -846,6 +850,20 @@ func (r *EventRepository) UpdateIsPaidEvent(id string, isPaid bool) error {
 		v = 1
 	}
 	_, err := r.db.Exec(`UPDATE events SET is_paid_event=?, updated_at=datetime('now') WHERE id=?`, v, id)
+	return err
+}
+
+// UpdateAchievements saves the output/outcome/impact achievement percentages.
+func (r *EventRepository) UpdateAchievements(id string, output, outcome, impact int) error {
+	_, err := r.db.Exec(`UPDATE events SET output_achievement=?, outcome_achievement=?, impact_achievement=?, updated_at=datetime('now') WHERE id=?`,
+		output, outcome, impact, id)
+	return err
+}
+
+// UpdateSWOT saves the SWOT analysis fields.
+func (r *EventRepository) UpdateSWOT(id string, strengths, weaknesses, opportunities, threats string) error {
+	_, err := r.db.Exec(`UPDATE events SET swot_strengths=?, swot_weaknesses=?, swot_opportunities=?, swot_threats=?, updated_at=datetime('now') WHERE id=?`,
+		strengths, weaknesses, opportunities, threats, id)
 	return err
 }
 

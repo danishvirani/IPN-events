@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -185,6 +186,67 @@ func (h *PhotoHandler) ToggleComplete(w http.ResponseWriter, r *http.Request) {
 
 	setFlash(w, "success", "Event completion status updated.")
 	http.Redirect(w, r, h.eventURL(id)+"?tab=post-event", http.StatusSeeOther)
+}
+
+// UpdateAchievements saves output/outcome/impact achievement percentages.
+func (h *PhotoHandler) UpdateAchievements(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	user := middleware.UserFromContext(r.Context())
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !user.IsAdmin() && e.UserID != user.ID && e.AssignedToID != user.ID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	output, _ := strconv.Atoi(r.FormValue("output_achievement"))
+	outcome, _ := strconv.Atoi(r.FormValue("outcome_achievement"))
+	impact, _ := strconv.Atoi(r.FormValue("impact_achievement"))
+
+	_ = h.eventRepo.UpdateAchievements(id, clamp(output, 0, 100), clamp(outcome, 0, 100), clamp(impact, 0, 100))
+
+	setFlash(w, "success", "Achievement scores saved.")
+	http.Redirect(w, r, h.eventURL(id)+"?tab=post-event", http.StatusSeeOther)
+}
+
+// UpdateSWOT saves the SWOT analysis for an event.
+func (h *PhotoHandler) UpdateSWOT(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	user := middleware.UserFromContext(r.Context())
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !user.IsAdmin() && e.UserID != user.ID && e.AssignedToID != user.ID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	strengths := strings.TrimSpace(r.FormValue("swot_strengths"))
+	weaknesses := strings.TrimSpace(r.FormValue("swot_weaknesses"))
+	opportunities := strings.TrimSpace(r.FormValue("swot_opportunities"))
+	threats := strings.TrimSpace(r.FormValue("swot_threats"))
+
+	_ = h.eventRepo.UpdateSWOT(id, strengths, weaknesses, opportunities, threats)
+
+	setFlash(w, "success", "SWOT analysis saved.")
+	http.Redirect(w, r, h.eventURL(id)+"?tab=post-event", http.StatusSeeOther)
+}
+
+func clamp(v, min, max int) int {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
 }
 
 // Gallery renders the admin photo gallery page showing all event photos.

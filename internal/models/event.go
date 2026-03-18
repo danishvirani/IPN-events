@@ -95,6 +95,17 @@ type Event struct {
 
 	Completed bool // true when the event is marked as finished
 
+	// Post-event evaluation
+	OutputAchievement  int // 0-100 percentage
+	OutcomeAchievement int
+	ImpactAchievement  int
+
+	// SWOT analysis
+	SWOTStrengths     string
+	SWOTWeaknesses    string
+	SWOTOpportunities string
+	SWOTThreats       string
+
 	Status       string
 	AdminComment string
 
