@@ -1107,19 +1107,71 @@
 
     {{/* Upload form */}}
     {{if $canUpload}}
-    <div class="mt-6 pt-6 border-t border-gray-100">
-      <form action="{{if $isAdmin}}/admin/events/{{$e.ID}}/photos{{else}}/events/{{$e.ID}}/photos{{end}}" method="POST" enctype="multipart/form-data" class="space-y-3">
-        <label class="block text-sm font-medium text-gray-700">Add Photos</label>
-        <input type="file" name="photos" multiple accept="image/jpeg,image/png"
-               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer">
-        <p class="text-xs text-gray-400">JPG or PNG, up to 10 MB each. Photos are automatically compressed.</p>
-        <button type="submit"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+    <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700" x-data="photoUploader()">
+      <form @submit.prevent="submitPhotos" class="space-y-3">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Add Photos</label>
+        <input type="file" @change="handleFiles($event)" multiple accept="image/jpeg,image/png"
+               class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 file:cursor-pointer">
+        <p class="text-xs text-gray-400">JPG or PNG. Photos are compressed in your browser before upload.</p>
+        <div x-show="uploading" class="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400">
+          <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+          <span x-text="statusText"></span>
+        </div>
+        <button type="submit" :disabled="uploading || files.length === 0"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
-          Upload Photos
+          <span x-text="uploading ? 'Uploading...' : 'Upload Photos'"></span>
         </button>
       </form>
     </div>
+    <script>
+    function photoUploader() {
+      return {
+        files: [],
+        uploading: false,
+        statusText: '',
+        handleFiles(e) { this.files = Array.from(e.target.files); },
+        async compressImage(file, maxPx = 2000, quality = 0.8) {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              let w = img.width, h = img.height;
+              if (w > maxPx || h > maxPx) {
+                if (w >= h) { h = Math.round(h * maxPx / w); w = maxPx; }
+                else { w = Math.round(w * maxPx / h); h = maxPx; }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              canvas.toBlob(resolve, 'image/jpeg', quality);
+            };
+            img.src = URL.createObjectURL(file);
+          });
+        },
+        async submitPhotos() {
+          if (this.files.length === 0) return;
+          this.uploading = true;
+          const formData = new FormData();
+          for (let i = 0; i < this.files.length; i++) {
+            this.statusText = `Compressing ${i + 1} of ${this.files.length}...`;
+            const blob = await this.compressImage(this.files[i]);
+            formData.append('photos', blob, this.files[i].name.replace(/\.\w+$/, '.jpg'));
+          }
+          this.statusText = `Uploading ${this.files.length} photo(s)...`;
+          try {
+            const resp = await fetch('{{if $isAdmin}}/admin/events/{{$e.ID}}/photos{{else}}/events/{{$e.ID}}/photos{{end}}', {
+              method: 'POST', body: formData, redirect: 'follow'
+            });
+            if (resp.redirected) { window.location.href = resp.url; }
+            else { window.location.reload(); }
+          } catch (err) {
+            this.statusText = 'Upload failed. Please try again.';
+            this.uploading = false;
+          }
+        }
+      };
+    }
+    </script>
     {{end}}
   </section>
 
