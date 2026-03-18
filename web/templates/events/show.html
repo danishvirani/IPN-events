@@ -1065,14 +1065,20 @@
         <div class="relative group cursor-pointer" @click="lightbox=true; current={{$i}}">
           <img src="/uploads/{{$p.Thumbnail}}" alt="{{$p.Caption}}"
                class="w-full h-48 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          {{if and $canUpload (not false)}}
-          <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/photos/{{$p.ID}}/delete{{else}}/events/{{$e.ID}}/photos/{{$p.ID}}/delete{{end}}"
-                class="absolute top-2 right-2 hidden group-hover:block"
-                onsubmit="return confirm('Delete this photo?')" @click.stop>
-            <button type="submit" class="bg-red-600/80 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-lg backdrop-blur-sm">
-              &times;
-            </button>
-          </form>
+          {{if $canUpload}}
+          <div class="absolute top-2 right-2 hidden group-hover:flex gap-1" @click.stop>
+            <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/photos/{{$p.ID}}/rotate{{else}}/events/{{$e.ID}}/photos/{{$p.ID}}/rotate{{end}}">
+              <button type="submit" title="Rotate 90°" class="bg-gray-800/70 hover:bg-gray-900 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-lg backdrop-blur-sm">
+                &#x21BB;
+              </button>
+            </form>
+            <form method="POST" action="{{if $isAdmin}}/admin/events/{{$e.ID}}/photos/{{$p.ID}}/delete{{else}}/events/{{$e.ID}}/photos/{{$p.ID}}/delete{{end}}"
+                  onsubmit="return confirm('Delete this photo?')">
+              <button type="submit" title="Delete" class="bg-red-600/80 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-lg backdrop-blur-sm">
+                &times;
+              </button>
+            </form>
+          </div>
           {{end}}
         </div>
         {{end}}

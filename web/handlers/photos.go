@@ -126,6 +126,45 @@ func (h *PhotoHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.eventURL(id)+"?tab=post-event", http.StatusSeeOther)
 }
 
+// Rotate rotates a photo 90° clockwise and regenerates its thumbnail.
+func (h *PhotoHandler) Rotate(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	photoId := chi.URLParam(r, "photoId")
+	user := middleware.UserFromContext(r.Context())
+
+	e, err := h.eventRepo.GetByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !user.IsAdmin() && e.UserID != user.ID && e.AssignedToID != user.ID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	photo, err := h.photoRepo.GetByID(photoId)
+	if err != nil || photo.EventID != id {
+		http.NotFound(w, r)
+		return
+	}
+
+	fullPath := filepath.Join(h.uploadDir, photo.Filename)
+	thumbPath := filepath.Join(h.uploadDir, photo.Thumbnail)
+
+	if err := imaging.RotateFile90CW(fullPath); err != nil {
+		log.Printf("photo rotate: full image error: %v", err)
+		setFlash(w, "error", "Failed to rotate photo.")
+		http.Redirect(w, r, h.eventURL(id)+"?tab=post-event", http.StatusSeeOther)
+		return
+	}
+	if err := imaging.RotateFile90CW(thumbPath); err != nil {
+		log.Printf("photo rotate: thumbnail error: %v", err)
+	}
+
+	setFlash(w, "success", "Photo rotated.")
+	http.Redirect(w, r, h.eventURL(id)+"?tab=post-event", http.StatusSeeOther)
+}
+
 // ToggleComplete marks or unmarks an event as completed.
 func (h *PhotoHandler) ToggleComplete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")

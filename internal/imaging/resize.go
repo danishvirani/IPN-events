@@ -140,6 +140,21 @@ func saveJPEG(path string, img image.Image) error {
 	return jpeg.Encode(f, img, &jpeg.Options{Quality: jpegQuality})
 }
 
+// RotateFile90CW reads a JPEG from disk, rotates it 90° clockwise, and overwrites it.
+func RotateFile90CW(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open: %w", err)
+	}
+	img, _, err := image.Decode(f)
+	f.Close()
+	if err != nil {
+		return fmt.Errorf("decode: %w", err)
+	}
+	rotated := rotate90CW(img)
+	return saveJPEG(path, rotated)
+}
+
 // --- orientation transforms ---
 
 func rotate90CW(img image.Image) image.Image {
