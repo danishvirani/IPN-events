@@ -95,7 +95,6 @@ var ChecklistCatalog = []ChecklistItemDef{
 	// ── Logistics (auto-populated on approval) ──
 	{Key: "logistics_space_reservation", Label: "Space Reservation", Group: ChecklistGroupLogistics, NeedsApproval: true, Condition: "venue_jamatkhana"},
 	{Key: "logistics_flyer_approval", Label: "Flyer Approval", Group: ChecklistGroupLogistics, NeedsApproval: true},
-	{Key: "logistics_pdt_food_request", Label: "PDT Food Request", Group: ChecklistGroupLogistics, NeedsApproval: true},
 	{Key: "logistics_council_calendar", Label: "Council Calendar Approval", Group: ChecklistGroupLogistics, NeedsApproval: true},
 
 	// ── Marketing — Approval Required (optional, admin selects) ──
@@ -111,6 +110,7 @@ var ChecklistCatalog = []ChecklistItemDef{
 	{Key: "marketing_internal_ipn_linkedin", Label: "IPN Southeast LinkedIn", Group: ChecklistGroupMarketingInternal, NeedsApproval: false},
 
 	// ── Optional Requests (admin selects, need approval) ──
+	{Key: "optional_pdt_food_request", Label: "PDT Food Request", Group: ChecklistGroupOptionalRequests, NeedsApproval: true},
 	{Key: "optional_photo_video", Label: "Photo/Video", Group: ChecklistGroupOptionalRequests, NeedsApproval: true},
 	{Key: "optional_av", Label: "AV", Group: ChecklistGroupOptionalRequests, NeedsApproval: true},
 	{Key: "optional_live_social", Label: "Live Social Media", Group: ChecklistGroupOptionalRequests, NeedsApproval: true},
