@@ -25,8 +25,7 @@
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script>
     // Prevent FOUC: apply dark class immediately from localStorage
-    if (localStorage.getItem('darkMode') === 'true' ||
-        (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (localStorage.getItem('darkMode') !== 'false') {
       document.documentElement.classList.add('dark');
     }
     // Alpine.js dark mode store
